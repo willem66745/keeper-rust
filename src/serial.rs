@@ -141,6 +141,12 @@ impl SerialClient {
             ConnectResponse::ConnectionFailed(err) => Err(SerialError::ConnectError(err))
         }
     }
+    
+    pub fn async_connect_device(&self, device: &str) {
+        self.tx.send(Command::ConnectDevice(None, device.into()))
+               .ok()
+               .expect("BUG: serial thread channel error");
+    }
 
     pub fn register_circle(&self, alias: &str, mac: u64) {
         self.tx.send(Command::RegisterCircle(alias.into(), mac))
