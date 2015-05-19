@@ -93,11 +93,11 @@ impl Event {
 
     fn new(key: &str, value: &toml::Value) -> Result<Event> {
         let specifier = try!(key.split("_").last().ok_or(
-                Error::MissingEventSpecifier(key.to_string())));
+                Error::MissingEventSpecifier(key.into())));
 
         match specifier {
             "fixed" => Event::time_in_a_day(value).map(|(f,s)| Event::Fixed(f,s)).ok_or(
-                Error::WrongEventSpecifier("fixed must hold a array of two integers".to_string())),
+                Error::WrongEventSpecifier("fixed must hold a array of two integers".into())),
             "fuzzy" => value.as_slice().map_or(None, |s| {
                     match s.len() {
                         2 => {
@@ -107,33 +107,33 @@ impl Event {
                         },
                         _ => None
                     }
-                }).ok_or(Error::WrongEventSpecifier("fuzzy must hold a array of two arrays of two integers".to_string())),
+                }).ok_or(Error::WrongEventSpecifier("fuzzy must hold a array of two arrays of two integers".into())),
             "sunrise" => value.as_integer().map(|i| Event::Sunrise(i as u16)).ok_or(
-                Error::WrongEventSpecifier("sunrise must only hold one integer (variance in minutes)".to_string())),
+                Error::WrongEventSpecifier("sunrise must only hold one integer (variance in minutes)".into())),
             "sunset" => value.as_integer().map(|i| Event::Sunset(i as u16)).ok_or(
-                Error::WrongEventSpecifier("sunset must only hold one integer (variance in minutes)".to_string())),
-            _ => Err(Error::WrongEventSpecifier("unsupported specifier".to_string()))
+                Error::WrongEventSpecifier("sunset must only hold one integer (variance in minutes)".into())),
+            _ => Err(Error::WrongEventSpecifier("unsupported specifier".into()))
         }
     }
 }
 
 #[derive(Debug)]
 pub struct Toggle {
-    alias: String,
-    start: Event,
-    end: Event
+    pub alias: String,
+    pub start: Event,
+    pub end: Event
 }
 
 impl Toggle {
     fn new(alias: &str, table: &toml::Table) -> Result<Toggle> {
         let start = try!(table.iter().find(|&(k,_)| k.starts_with("start_")).map_or(
-                Err(Error::MissingStartEvent(alias.to_string())),
+                Err(Error::MissingStartEvent(alias.into())),
                 |(k,v)| Event::new(&k[..], v)));
         let end = try!(table.iter().find(|&(k,_)| k.starts_with("end_")).map_or(
-                Err(Error::MissingEndEvent(alias.to_string())),
+                Err(Error::MissingEndEvent(alias.into())),
                 |(k,v)| Event::new(&k[..], v)));
         Ok(Toggle {
-            alias: alias.to_string(),
+            alias: alias.into(),
             start: start,
             end: end
         })
@@ -160,10 +160,10 @@ impl CircleSetting {
 
 #[derive(Debug)]
 pub struct Circle {
-    alias: String,
-    mac: u64,
-    default: CircleSetting,
-    toggles: Vec<Toggle>
+    pub alias: String,
+    pub mac: u64,
+    pub default: CircleSetting,
+    pub toggles: Vec<Toggle>
 }
 
 impl Circle {
@@ -182,7 +182,7 @@ impl Circle {
                 },
                 _ => {
                     let toggle = try!(v.as_table().map_or(
-                            Err(Error::ScheduleExpected(alias.to_string())),
+                            Err(Error::ScheduleExpected(alias.into())),
                             |t| Toggle::new(&k[..], t)));
                     toggles.push(toggle);
                 }
@@ -190,9 +190,9 @@ impl Circle {
         }
 
         Ok(Circle {
-            alias: alias.to_string(),
-            mac: try!(mac.ok_or(Error::InvalidMac(alias.to_string()))),
-            default: try!(default.ok_or(Error::InvalidDefault(alias.to_string()))),
+            alias: alias.into(),
+            mac: try!(mac.ok_or(Error::InvalidMac(alias.into()))),
+            default: try!(default.ok_or(Error::InvalidDefault(alias.into()))),
             toggles: toggles
         })
     }
@@ -200,7 +200,7 @@ impl Circle {
 
 #[derive(Debug)]
 pub struct Device {
-    serial_device: String
+    pub serial_device: String
 }
 
 impl Device {
@@ -212,7 +212,7 @@ impl Device {
                 CONFIG_DEVICE => {
                     if let Some(string) = v.as_str() {
                         result = Some(Device{
-                            serial_device: string.to_string()
+                            serial_device: string.into()
                         });
                     }
                 },
@@ -226,8 +226,8 @@ impl Device {
 
 #[derive(Debug)]
 pub struct Config {
-    device: Option<Device>,
-    circles: Vec<Circle>
+    pub device: Option<Device>,
+    pub circles: Vec<Circle>
 }
 
 impl Config {
