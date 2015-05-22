@@ -19,6 +19,8 @@ fn main() {
 
     for circle in config.circles {
         serial.register_circle(&circle.alias, circle.mac);
+        serial.switch_on(&circle.alias);
+        serial.switch_off(&circle.alias);
     }
 
     serial.hangup();

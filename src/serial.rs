@@ -35,6 +35,8 @@ enum Command {
     ConnectStub,
     Hangup,
     RegisterCircle(String, u64),
+    SwitchOn(String),
+    SwitchOff(String),
 }
 
 enum ConnectResponse {
@@ -86,6 +88,16 @@ impl Serial {
                         if let Ok(circle) = circle {
                             circles.insert(alias, circle);
                         }
+                    }
+                },
+                Command::SwitchOn(circle) => {
+                    if let Some(ref circle) = circles.get(&circle) {
+                        circle.switch_on().ok().expect("unable to switch on a circle");
+                    }
+                },
+                Command::SwitchOff(circle) => {
+                    if let Some(ref circle) = circles.get(&circle) {
+                        circle.switch_off().ok().expect("unable to switch off a circle");
                     }
                 },
             }
@@ -141,6 +153,12 @@ impl SerialClient {
             ConnectResponse::ConnectionFailed(err) => Err(SerialError::ConnectError(err))
         }
     }
+
+    pub fn hangup(&self) {
+        self.tx.send(Command::Hangup)
+               .ok()
+               .expect("BUG: cannot bring serial thread down");
+    }
     
     pub fn async_connect_device(&self, device: &str) {
         self.tx.send(Command::ConnectDevice(None, device.into()))
@@ -153,11 +171,17 @@ impl SerialClient {
                .ok()
                .expect("BUG: cannot register circle");
     }
-
-    pub fn hangup(&self) {
-        self.tx.send(Command::Hangup)
+    
+    pub fn switch_on(&self, alias: &str) {
+        self.tx.send(Command::SwitchOn(alias.into()))
                .ok()
-               .expect("BUG: cannot bring serial thread down");
+               .expect("BUG: unable to request to switch circle on");
+    }
+    
+    pub fn switch_off(&self, alias: &str) {
+        self.tx.send(Command::SwitchOff(alias.into()))
+               .ok()
+               .expect("BUG: unable to request to switch circle off");
     }
 }
 
