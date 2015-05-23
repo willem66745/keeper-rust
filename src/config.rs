@@ -1,5 +1,8 @@
 // This module loads the configuration file
 
+use dailyschedule::{DailyEvent, Filter, Moment};
+use zoneinfo::ZoneInfo;
+use std::convert::Into;
 use std::error;
 use std::fmt;
 use std::fs;
@@ -11,6 +14,8 @@ use toml;
 
 const CONFIG_HEAD: &'static str = "config";
 const CONFIG_DEVICE: &'static str = "device";
+const CONFIG_LATITUDE: &'static str = "latitude";
+const CONFIG_LONGITUDE: &'static str = "longitude";
 const CIRCLE_MAC: &'static str = "mac";
 const CIRCLE_DEFAULT: &'static str = "default";
 
@@ -26,6 +31,7 @@ pub enum Error {
     ScheduleExpected(String),
     InvalidMac(String),
     InvalidDefault(String),
+    LocationMissing,
     InvalidToml,
 }
 
@@ -115,6 +121,11 @@ impl Event {
             _ => Err(Error::WrongEventSpecifier("unsupported specifier".into()))
         }
     }
+
+    pub fn into_dailyevent(&self, device: &Device) -> DailyEvent {
+        // XXX
+        DailyEvent::Fixed(Filter::Always, Moment::new(0,0,0))
+    }
 }
 
 #[derive(Debug)]
@@ -200,42 +211,54 @@ impl Circle {
 
 #[derive(Debug)]
 pub struct Device {
-    pub serial_device: String
+    pub serial_device: Option<String>,
+    pub latitude: f64,
+    pub longitude: f64
 }
 
 impl Device {
     fn new(table: &toml::Table) -> Option<Device> {
-        let mut result = None;
+        let mut serial_device = None;
+        let mut latitude = None;
+        let mut longitude = None;
 
         for (k, v) in table {
             match &k[..] {
                 CONFIG_DEVICE => {
                     if let Some(string) = v.as_str() {
-                        result = Some(Device{
-                            serial_device: string.into()
-                        });
+                        serial_device = Some(string.into());
+                    }
+                },
+                CONFIG_LATITUDE => {
+                    if let Some(lat) = v.as_float() {
+                        latitude = Some(lat);
+                    }
+                },
+                CONFIG_LONGITUDE => {
+                    if let Some(long) = v.as_float() {
+                        longitude = Some(long);
                     }
                 },
                 _ => {}
             }
         }
 
-        result
+        latitude.map_or(None, |lat| longitude.map_or(None, |long| serial_device.map_or(
+                    Some(Device{serial_device: None, latitude:lat, longitude:long}),
+                    |dev| Some(Device{serial_device: Some(dev), latitude:lat, longitude: long}))))
     }
 }
 
 #[derive(Debug)]
 pub struct Config {
-    pub device: Option<Device>,
+    pub device: Device,
     pub circles: Vec<Circle>
 }
 
 impl Config {
-    pub fn new(configfile: path::PathBuf) -> Result<Config> {
-        let mut result = Config {
-            device: None,
-            circles: vec![]
-        };
+    pub fn new(configfile: &path::PathBuf) -> Result<Config> {
+        let mut circles = vec![];
+        let mut device = None;
 
         let mut config = String::new();
         let mut file = try!(fs::File::open(configfile));
@@ -246,15 +269,18 @@ impl Config {
             if let Some(table) = v.as_table() {
                 match &k[..] {
                     CONFIG_HEAD => {
-                        result.device = Device::new(table);
+                        device = Device::new(table);
                     },
                     _ => {
-                        result.circles.push(try!(Circle::new(&k[..], table)));
+                        circles.push(try!(Circle::new(&k[..], table)));
                     }
                 }
             }
         }
 
-        Ok(result)
+        Ok(Config {
+            device: try!(device.ok_or(Error::LocationMissing)),
+            circles: circles
+        })
     }
 }
