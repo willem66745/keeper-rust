@@ -1,5 +1,4 @@
-use dailyschedule::{Handler, Schedule, DailyEvent, Context};
-use std::cell::RefCell;
+use dailyschedule::{Handler, Schedule, DailyEvent};
 use std::path;
 use std::rc::Rc;
 use super::config;
@@ -7,17 +6,39 @@ use super::serial;
 use time::Timespec;
 use zoneinfo::ZoneInfo;
 
-struct Event;
+#[derive(Eq, PartialEq)]
+enum Context {
+    Off,
+    On
+}
 
-impl Handler for Event {
-    fn kick(&mut self, timestamp: &Timespec, event: &DailyEvent, context: &Context) {
+struct Event {
+    serial: serial::SerialClient,
+    alias: String
+}
+
+impl Event {
+    fn new(alias: String, serial: serial::SerialClient) -> Event {
+        Event {
+            alias: alias,
+            serial: serial
+        }
+    }
+}
+
+impl Handler<Context> for Event {
+    fn kick(&self, _: &Timespec, _: &DailyEvent, context: &Context) {
+        match context {
+            &Context::Off => self.serial.switch_off(&self.alias[..]),
+            &Context::On => self.serial.switch_on(&self.alias[..]),
+        }
     }
 }
 
 struct TrackerInner {
     serial: serial::SerialClient,
     config: config::Config,
-    schedule: Schedule<Event>,
+    schedule: Schedule<Context, Event>,
 }
 
 impl TrackerInner {
@@ -28,12 +49,12 @@ impl TrackerInner {
                 config::CircleSetting::Off => self.serial.switch_off(&circle.alias),
                 config::CircleSetting::Schedule => {
                     for toggle in circle.toggles.iter() {
-                        let switch = Rc::new(RefCell::new(Event));
+                        let switch = Rc::new(Event::new(circle.alias.clone(), self.serial.clone()));
                         let start = toggle.start.into_dailyevent(&self.config.device);
                         let end = toggle.end.into_dailyevent(&self.config.device);
 
-                        self.schedule.add_event(start, switch.clone(), Context(0));
-                        self.schedule.add_event(end, switch.clone(), Context(0));
+                        self.schedule.add_event(start, switch.clone(), Context::On);
+                        self.schedule.add_event(end, switch.clone(), Context::Off);
                     }
                 }
             }
@@ -42,7 +63,7 @@ impl TrackerInner {
 
     fn new(configfile: &path::PathBuf, zoneinfo: &ZoneInfo) -> TrackerInner {
         let config = config::Config::new(configfile).unwrap(); // XXX
-        let schedule = Schedule::<Event>::new(zoneinfo.clone());
+        let schedule = Schedule::new(zoneinfo.clone());
         let serial = serial::Serial::spawn();
 
         let mut tracker = TrackerInner {
@@ -73,18 +94,7 @@ impl Tracker {
             zoneinfo: zoneinfo,
         };
 
-        //tracker.reschedule();
-
         tracker
     }
-
-//    pub fn update_config(&mut self, config: config::Config) {
-//        self.config = config;
-//        self.schedule = Schedule::<'a, _>::new(self.zoneinfo.clone());
-//        self.reschedule();
-//    }
-
-//    fn reschedule(&self) {
-//    }
 }
 

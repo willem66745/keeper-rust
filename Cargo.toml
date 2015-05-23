@@ -10,8 +10,8 @@ time = "*"
 [dependencies.plugwise]
 git = "https://github.com/willem66745/plugwise-rust"
 
-#[dependencies.daylight]
-#git = "https://github.com/willem66745/daylight-rust"
+[dependencies.daylight]
+git = "https://github.com/willem66745/daylight-rust"
 
 [dependencies.dailyschedule]
 git = "https://github.com/willem66745/dailyschedule-rust"

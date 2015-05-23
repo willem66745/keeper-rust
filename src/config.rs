@@ -1,7 +1,6 @@
 // This module loads the configuration file
 
 use dailyschedule::{DailyEvent, Filter, Moment};
-use zoneinfo::ZoneInfo;
 use std::convert::Into;
 use std::error;
 use std::fmt;
@@ -10,7 +9,9 @@ use std::io;
 use std::io::prelude::*;
 use std::path;
 use std::result;
+use time::{Duration, at_utc};
 use toml;
+use daylight::calculate_daylight;
 
 const CONFIG_HEAD: &'static str = "config";
 const CONFIG_DEVICE: &'static str = "device";
@@ -123,8 +124,31 @@ impl Event {
     }
 
     pub fn into_dailyevent(&self, device: &Device) -> DailyEvent {
-        // XXX
-        DailyEvent::Fixed(Filter::Always, Moment::new(0,0,0))
+        let latitude = device.latitude;
+        let longitude = device.longitude;
+        match self {
+            &Event::Fixed(h,m) => DailyEvent::Fixed(Filter::Always, Moment::new(h,m,0)),
+            &Event::Fuzzy((h1,m1),(h2,m2)) =>
+                DailyEvent::Fuzzy(Filter::Always, Moment::new(h1,m1,0), Moment::new(h2,m2,0)),
+            &Event::Sunrise(m) =>
+                DailyEvent::ByClosure(
+                    Filter::Always,
+                    Box::new(move|t| {
+                        let daylight = calculate_daylight(at_utc(t), latitude, longitude);
+                        let dusk = Duration::seconds((daylight.sunrise -
+                                                      daylight.twilight_morning).num_seconds() / 2);
+                        Moment::new_from_timespec(daylight.twilight_morning + dusk)
+                    }), Duration::minutes(m as i64)),
+            &Event::Sunset(m) =>
+                DailyEvent::ByClosure(
+                    Filter::Always,
+                    Box::new(move|t| {
+                        let daylight = calculate_daylight(at_utc(t), latitude, longitude);
+                        let dusk = Duration::seconds((daylight.sunset -
+                                                      daylight.twilight_evening).num_seconds() / 2);
+                        Moment::new_from_timespec(daylight.sunset + dusk)
+                    }), Duration::minutes(m as i64)),
+        }
     }
 }
 
