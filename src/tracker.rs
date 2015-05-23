@@ -1,4 +1,6 @@
-use dailyschedule::{Handler, Schedule, DailyEvent};
+use dailyschedule::{Handler, Schedule};
+use std::cell::{Cell, RefCell};
+use std::collections::BTreeSet;
 use std::path;
 use std::rc::Rc;
 use super::config;
@@ -14,23 +16,54 @@ enum Context {
 
 struct Event {
     serial: serial::SerialClient,
-    alias: String
+    alias: String,
+    last_on: Cell<Timespec>,
+    valid_events: RefCell<BTreeSet<Timespec>>,
 }
 
 impl Event {
     fn new(alias: String, serial: serial::SerialClient) -> Event {
         Event {
             alias: alias,
-            serial: serial
+            serial: serial,
+            last_on: Cell::new(Timespec::new(0, 0)),
+            valid_events: RefCell::new(BTreeSet::new()),
         }
     }
 }
 
 impl Handler<Context> for Event {
-    fn kick(&self, _: &Timespec, _: &DailyEvent, context: &Context) {
+    /// Hint the event-handler for future events; this function will
+    /// add only valid events (where on event lies before the off event) to
+    /// the valid events list.
+    fn hint(&self, ts: &Timespec, context: &Context) {
         match context {
-            &Context::Off => self.serial.switch_off(&self.alias[..]),
-            &Context::On => self.serial.switch_on(&self.alias[..]),
+            &Context::On => self.last_on.set(*ts),
+            &Context::Off => {
+                if *ts > self.last_on.get() {
+                    let mut events = self.valid_events.borrow_mut();
+                    events.insert(self.last_on.get());
+                    events.insert(*ts);
+                }
+            }
+        }
+    }
+
+    /// Perform action only when the timestamp is considered valid;
+    /// Remove the current or prior timestamps from the expected timestamps.
+    fn kick(&self, ts: &Timespec, context: &Context) {
+        if self.valid_events.borrow().contains(ts) {
+            match context {
+                &Context::Off => self.serial.switch_off(&self.alias[..]),
+                &Context::On => self.serial.switch_on(&self.alias[..]),
+            }
+
+            let mut events = self.valid_events.borrow_mut();
+
+            // don't like the clone here, but keeps events mutable inside the loop
+            for e in events.clone().iter().take_while(|&e| *e <= *ts) {
+                events.remove(e);
+            }
         }
     }
 }
