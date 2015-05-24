@@ -85,7 +85,7 @@ impl Event {
             match v.len() {
                 2 => {
                     let (h,m) = (v[0], v[1]);
-                    if h < 0 || h >= 24 {
+                    if h < 0 || h >= 48 {
                         None
                     } else if m < 0 || m >= 60 {
                         None

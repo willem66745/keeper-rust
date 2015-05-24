@@ -5,10 +5,10 @@ use std::path;
 use std::rc::Rc;
 use super::config;
 use super::serial;
-use time::Timespec;
+use time::{Duration, Timespec, now_utc, at};
 use zoneinfo::ZoneInfo;
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Debug)]
 enum Context {
     Off,
     On
@@ -53,6 +53,7 @@ impl Handler<Context> for Event {
     /// Remove the current or prior timestamps from the expected timestamps.
     fn kick(&self, ts: &Timespec, context: &Context) {
         if self.valid_events.borrow().contains(ts) {
+            println!("XXX: {} {:?} {}", at(*ts).asctime(), context, self.alias); // XXX
             match context {
                 &Context::Off => self.serial.switch_off(&self.alias[..]),
                 &Context::On => self.serial.switch_on(&self.alias[..]),
@@ -72,6 +73,7 @@ struct TrackerInner {
     serial: serial::SerialClient,
     config: config::Config,
     schedule: Schedule<Context, Event>,
+    schedule_ref: Timespec,
 }
 
 impl TrackerInner {
@@ -98,16 +100,45 @@ impl TrackerInner {
         let config = config::Config::new(configfile).unwrap(); // XXX
         let schedule = Schedule::new(zoneinfo.clone());
         let serial = serial::Serial::spawn();
+        let mut schedule_ref = now_utc();
+        schedule_ref.tm_hour = 0;
+        schedule_ref.tm_min = 0;
+        schedule_ref.tm_sec = 0;
+        schedule_ref.tm_nsec = 0;
+
 
         let mut tracker = TrackerInner {
             config: config,
             schedule: schedule,
             serial: serial,
+            schedule_ref: schedule_ref.to_timespec(),
         };
 
         tracker.load_schedule();
+        // fill schedule for 48 hours:
+        tracker.update_schedule();
+        tracker.update_schedule();
 
         tracker
+    }
+
+    fn update_schedule(&mut self) {
+        self.schedule.update_schedule(self.schedule_ref);
+        self.schedule_ref = self.schedule_ref + Duration::days(1);
+    }
+
+    // XXX remove in time
+    fn fast_forward(&mut self) {
+        let mut now = now_utc().to_timespec();
+
+        loop {
+            match self.schedule.kick_event(now) {
+                Some(next) => {
+                    now = next;
+                }
+                None => break
+            }
+        }
     }
 }
 
@@ -128,6 +159,15 @@ impl Tracker {
         };
 
         tracker
+    }
+
+    pub fn update_schedule(&mut self) {
+        self.inner.update_schedule();
+    }
+
+    // XXX remove in time
+    pub fn fast_forward(&mut self) {
+        self.inner.fast_forward();
     }
 }
 
