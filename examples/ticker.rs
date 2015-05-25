@@ -137,6 +137,10 @@ impl<C> Ticker<C> where C: Send + Copy + 'static {
     fn get_transmitter(&self) -> Sender<(C, Option<Timespec>)> {
         self.tx.clone()
     }
+
+    fn recv(&self) -> (C, Option<Timespec>) {
+        self.rx.recv().ok().expect("BUG: ticker channel has no senders")
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -151,7 +155,7 @@ fn main() {
     let mut teller = 0; // XXX
 
     loop {
-        let (_, timestamp) = ticker.rx.recv().unwrap();
+        let (_, timestamp) = ticker.recv();
 
         if let Some(timestamp) = timestamp {
             println!("{}", at(timestamp).asctime());
