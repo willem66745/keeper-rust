@@ -16,8 +16,8 @@ git = "https://github.com/willem66745/daylight-rust"
 [dependencies.dailyschedule]
 git = "https://github.com/willem66745/dailyschedule-rust"
 
-#[dependencies.ntpclient]
-#git = "https://github.com/willem66745/ntpclient-rust"
+[dependencies.ntpclient]
+git = "https://github.com/willem66745/ntpclient-rust"
 
 [dependencies.zoneinfo]
 git = "https://github.com/willem66745/zoneinfo-rust"
