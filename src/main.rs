@@ -7,13 +7,16 @@ use keeper::ticker::Ticker;
 use std::env;
 use time::{at, Duration};
 
+#[cfg(not(test))]
 const CONFIG: &'static str = ".plugwise.toml";
 
+#[cfg(not(test))]
 #[derive(Copy, Clone)]
 enum Keeper {
     Tick
 }
 
+#[cfg(not(test))]
 fn main() {
     let mut configfile = env::home_dir().expect("BUG: unable to find home/user directory");
     configfile.push(CONFIG);
@@ -24,7 +27,8 @@ fn main() {
         match event {
             Keeper::Tick => {
                 if let Some(timestamp) = timestamp {
-                    println!("{}", at(timestamp).asctime());
+                    println!("tick: {}", at(timestamp).asctime());
+                    tracker.process_tick(timestamp);
                 }
             }
         }
