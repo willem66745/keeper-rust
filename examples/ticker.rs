@@ -80,15 +80,15 @@ impl NtpFetcher {
     }
 }
 
-struct Ticker {
-    rx: Receiver<Timespec>,
-    tx: Sender<Timespec>,
+struct Ticker<C> {
+    rx: Receiver<(C, Option<Timespec>)>,
+    tx: Sender<(C, Option<Timespec>)>,
     joiner: thread::JoinHandle<()>,
     leave_guard: Arc<(Mutex<bool>, Condvar)>,
 }
 
-impl Ticker {
-    fn spawn(server: &str, tick_interval: Duration, ntp_poll: Duration) -> Ticker {
+impl<C> Ticker<C> where C: Send + Copy + 'static {
+    fn spawn(server: &str, tick_interval: Duration, ntp_poll: Duration, event: C) -> Ticker<C> {
         let (tx, rx) = channel();
         let leave_guard = Arc::new((Mutex::new(true), Condvar::new()));
         let waiter = leave_guard.clone();
@@ -111,7 +111,7 @@ impl Ticker {
 
                 if *leaver {
                     if let Some(ts) = ntp.get_timespec() {
-                        tx.send(ts).ok().expect("BUG: cannot send timestamp");
+                        tx.send((event, Some(ts))).ok().expect("BUG: cannot send timestamp");
                     }
                 }
             }
@@ -133,17 +133,29 @@ impl Ticker {
         cvar.notify_all();
         let _ = self.joiner.join();
     }
+
+    fn get_transmitter(&self) -> Sender<(C, Option<Timespec>)> {
+        self.tx.clone()
+    }
+}
+
+#[derive(Copy, Clone)]
+enum Dummy {
+    Dummy
 }
 
 fn main() {
-    let ticker = Ticker::spawn("nl.pool.ntp.org", Duration::seconds(1), Duration::days(1));
+    let ticker = Ticker::spawn("nl.pool.ntp.org", Duration::seconds(1), Duration::days(1), Dummy::Dummy);
+    let _ = ticker.get_transmitter(); // suppress warning
 
     let mut teller = 0; // XXX
 
     loop {
-        let timestamp = ticker.rx.recv().unwrap();
+        let (_, timestamp) = ticker.rx.recv().unwrap();
 
-        println!("{}", at(timestamp).asctime());
+        if let Some(timestamp) = timestamp {
+            println!("{}", at(timestamp).asctime());
+        }
 
         teller = teller + 1;
         if teller >= 5 {
