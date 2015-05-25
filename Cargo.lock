@@ -1,0 +1,137 @@
+[root]
+name = "keeper"
+version = "0.1.0"
+dependencies = [
+ "dailyschedule 0.0.1 (git+https://github.com/willem66745/dailyschedule-rust)",
+ "daylight 0.0.1 (git+https://github.com/willem66745/daylight-rust)",
+ "ntpclient 0.0.1 (git+https://github.com/willem66745/ntpclient-rust)",
+ "plugwise 0.0.1 (git+https://github.com/willem66745/plugwise-rust)",
+ "time 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
+ "toml 0.1.20 (registry+https://github.com/rust-lang/crates.io-index)",
+ "zoneinfo 0.0.1 (git+https://github.com/willem66745/zoneinfo-rust)",
+]
+
+[[package]]
+name = "byteorder"
+version = "0.3.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "crc16"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "dailyschedule"
+version = "0.0.1"
+source = "git+https://github.com/willem66745/dailyschedule-rust#049407d499c14db715a00e07da4da5aebf305dd4"
+dependencies = [
+ "rand 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "time 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
+ "zoneinfo 0.0.1 (git+https://github.com/willem66745/zoneinfo-rust)",
+]
+
+[[package]]
+name = "daylight"
+version = "0.0.1"
+source = "git+https://github.com/willem66745/daylight-rust#03d2c3cc0ea6e2a0b273e320a72d8ba4bbad8da3"
+dependencies = [
+ "time 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "gcc"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "libc"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "ntpclient"
+version = "0.0.1"
+source = "git+https://github.com/willem66745/ntpclient-rust#46309f601606eb18f2e8c2533131ba9a6faf07de"
+dependencies = [
+ "byteorder 0.3.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "time 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "num"
+version = "0.1.24"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "rand 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "plugwise"
+version = "0.0.1"
+source = "git+https://github.com/willem66745/plugwise-rust#18a586652fdbf1f932b4ba579cfcb1880e4e8a4b"
+dependencies = [
+ "crc16 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serial 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "time 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "rand"
+version = "0.3.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "libc 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "rustc-serialize"
+version = "0.3.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "serial"
+version = "0.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "libc 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "termios 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "time 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "termios"
+version = "0.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "libc 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "time"
+version = "0.1.25"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "gcc 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "toml"
+version = "0.1.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "rustc-serialize 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "zoneinfo"
+version = "0.0.1"
+source = "git+https://github.com/willem66745/zoneinfo-rust#1a11b07829ae6065f72e3f995dba10a0dca9c9aa"
+dependencies = [
+ "byteorder 0.3.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "time 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+

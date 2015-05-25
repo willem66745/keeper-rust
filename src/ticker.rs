@@ -1,7 +1,7 @@
 
 use ntpclient::retrieve_ntp_timestamp;
 use std::sync::{Arc, Mutex, Condvar};
-use std::sync::mpsc::{channel, Sender, Receiver};
+use std::sync::mpsc::{channel, Sender, Receiver, Iter};
 use std::thread;
 use time::{Timespec, Duration, precise_time_ns};
 
@@ -48,7 +48,6 @@ impl NtpFetcher {
                 let server = self.server.clone();
 
                 thread::spawn(move || {
-                    println!("receiving timestamp");
                     if let Ok(ts) = retrieve_ntp_timestamp(&server[..]) {
                         if let Ok(ref mut lock) = sync.lock() {
                             **lock = (ts, precise_time_ns());
@@ -136,7 +135,7 @@ impl<C> Ticker<C> where C: Send + Copy + 'static {
         self.tx.clone()
     }
 
-    pub fn recv(&self) -> (C, Option<Timespec>) {
-        self.rx.recv().ok().expect("BUG: ticker channel has no senders")
+    pub fn recv_iter(&self) -> Iter<(C, Option<Timespec>)> {
+        self.rx.iter()
     }
 }

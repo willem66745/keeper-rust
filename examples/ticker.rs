@@ -15,17 +15,16 @@ fn main() {
 
     let mut teller = 0; // XXX
 
-    loop {
-        let (_, timestamp) = ticker.recv();
-
+    for (_, timestamp) in ticker.recv_iter() {
         if let Some(timestamp) = timestamp {
             println!("{}", at(timestamp).asctime());
         }
 
         teller = teller + 1;
         if teller >= 5 {
-            ticker.stop_ticker();
             break;
         }
     }
+
+    ticker.stop_ticker();
 }
