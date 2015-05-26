@@ -70,11 +70,11 @@ dependencies = [
 [[package]]
 name = "plugwise"
 version = "0.0.1"
-source = "git+https://github.com/willem66745/plugwise-rust#18a586652fdbf1f932b4ba579cfcb1880e4e8a4b"
+source = "git+https://github.com/willem66745/plugwise-rust#209aff7e65d71588923cba1c2f17e4edf34cae7e"
 dependencies = [
  "crc16 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)",
- "serial 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serial 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -93,17 +93,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "serial"
-version = "0.0.5"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "libc 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "termios 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "termios 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "termios"
-version = "0.0.5"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "libc 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
