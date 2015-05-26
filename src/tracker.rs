@@ -1,6 +1,6 @@
 use dailyschedule::{Handler, Schedule};
 use std::cell::{Cell, RefCell};
-use std::collections::BTreeSet;
+use std::collections::BTreeMap;
 use std::path;
 use std::rc::Rc;
 use super::config;
@@ -8,31 +8,33 @@ use super::serial;
 use time::{Duration, Timespec, at_utc, at, now_utc};
 use zoneinfo::ZoneInfo;
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
 enum Context {
     Off,
     On
 }
 
-struct Event {
+struct Switch {
     serial: serial::SerialClient,
     alias: String,
     last_on: Cell<Timespec>,
-    valid_events: RefCell<BTreeSet<Timespec>>,
+    state: Cell<Context>,
+    valid_events: RefCell<BTreeMap<Timespec, Context>>,
 }
 
-impl Event {
-    fn new(alias: String, serial: serial::SerialClient) -> Event {
-        Event {
+impl Switch {
+    fn new(alias: String, serial: serial::SerialClient) -> Switch {
+        Switch {
             alias: alias,
             serial: serial,
             last_on: Cell::new(Timespec::new(0, 0)),
-            valid_events: RefCell::new(BTreeSet::new()),
+            state: Cell::new(Context::Off),
+            valid_events: RefCell::new(BTreeMap::new()),
         }
     }
 }
 
-impl Handler<Context> for Event {
+impl Handler<Context> for Switch {
     /// Hint the event-handler for future events; this function will
     /// add only valid events (where on event lies before the off event) to
     /// the valid events list.
@@ -42,8 +44,8 @@ impl Handler<Context> for Event {
             &Context::Off => {
                 if *ts > self.last_on.get() {
                     let mut events = self.valid_events.borrow_mut();
-                    events.insert(self.last_on.get());
-                    events.insert(*ts);
+                    events.insert(self.last_on.get(), Context::On);
+                    events.insert(*ts, Context::Off);
                 }
             }
         }
@@ -52,8 +54,9 @@ impl Handler<Context> for Event {
     /// Perform action only when the timestamp is considered valid;
     /// Remove the current or prior timestamps from the expected timestamps.
     fn kick(&self, ts: &Timespec, context: &Context) {
-        if self.valid_events.borrow().contains(ts) {
+        if self.valid_events.borrow().contains_key(ts) {
             println!("XXX: {} {:?} {}", at(*ts).asctime(), context, self.alias); // XXX
+            self.state.set(*context);
             match context {
                 &Context::Off => self.serial.switch_off(&self.alias[..]),
                 &Context::On => self.serial.switch_on(&self.alias[..]),
@@ -62,7 +65,7 @@ impl Handler<Context> for Event {
             let mut events = self.valid_events.borrow_mut();
 
             // don't like the clone here, but keeps events mutable inside the loop
-            for e in events.clone().iter().take_while(|&e| *e <= *ts) {
+            for (e, _) in events.clone().iter().take_while(|&(&e, _)| e <= *ts) {
                 events.remove(e);
             }
         }
@@ -72,20 +75,22 @@ impl Handler<Context> for Event {
 struct TrackerInner {
     serial: serial::SerialClient,
     config: config::Config,
-    schedule: Schedule<Context, Event>,
+    schedule: Schedule<Context, Switch>,
     schedule_ref: Timespec,
     initial: bool,
+    switches: BTreeMap<String, Rc<Switch>>,
 }
 
 impl TrackerInner {
     fn load_schedule(&mut self) {
+        self.switches.clear();
         for circle in self.config.circles.iter() {
+            let switch = Rc::new(Switch::new(circle.alias.clone(), self.serial.clone()));
             match circle.default {
                 config::CircleSetting::On => self.serial.switch_on(&circle.alias),
                 config::CircleSetting::Off => self.serial.switch_off(&circle.alias),
                 config::CircleSetting::Schedule => {
                     for toggle in circle.toggles.iter() {
-                        let switch = Rc::new(Event::new(circle.alias.clone(), self.serial.clone()));
                         let start = toggle.start.into_dailyevent(&self.config.device);
                         let end = toggle.end.into_dailyevent(&self.config.device);
 
@@ -94,6 +99,7 @@ impl TrackerInner {
                     }
                 }
             }
+            self.switches.insert(circle.alias.clone(), switch);
         }
     }
 
@@ -102,12 +108,15 @@ impl TrackerInner {
         let schedule = Schedule::new(zoneinfo.clone());
         let serial = serial::Serial::spawn();
 
+        // XXX: register circles / connect etc...
+
         let mut tracker = TrackerInner {
             config: config,
             schedule: schedule,
             serial: serial,
             schedule_ref: Timespec::new(0,0),
             initial: true,
+            switches: BTreeMap::new(),
         };
 
         tracker.load_schedule();
