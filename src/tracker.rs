@@ -20,6 +20,8 @@ struct Switch {
     last_on: Cell<Timespec>,
     state: Cell<Context>,
     valid_events: RefCell<BTreeMap<Timespec, Context>>,
+    /// when "hot" perform actual relay operations
+    hot: Cell<bool>,
 }
 
 impl Switch {
@@ -30,7 +32,29 @@ impl Switch {
             last_on: Cell::new(Timespec::new(0, 0)),
             state: Cell::new(Context::Off),
             valid_events: RefCell::new(BTreeMap::new()),
+            hot: Cell::new(false),
         }
+    }
+}
+
+impl Switch {
+    fn set_switch_state(&self, state: Context) {
+        self.state.set(state);
+        self.dispatch_context();
+    }
+
+    fn dispatch_context(&self) {
+        if self.hot.get() {
+            match self.state.get() {
+                Context::Off => self.serial.switch_off(&self.alias[..]),
+                Context::On => self.serial.switch_on(&self.alias[..]),
+            }
+        }
+    }
+
+    fn make_hot(&self) {
+        self.hot.set(true);
+        self.dispatch_context();
     }
 }
 
@@ -56,11 +80,7 @@ impl Handler<Context> for Switch {
     fn kick(&self, ts: &Timespec, context: &Context) {
         if self.valid_events.borrow().contains_key(ts) {
             println!("XXX: {} {:?} {}", at(*ts).asctime(), context, self.alias); // XXX
-            self.state.set(*context);
-            match context {
-                &Context::Off => self.serial.switch_off(&self.alias[..]),
-                &Context::On => self.serial.switch_on(&self.alias[..]),
-            }
+            self.set_switch_state(*context);
 
             let mut events = self.valid_events.borrow_mut();
 
@@ -87,8 +107,8 @@ impl TrackerInner {
         for circle in self.config.circles.iter() {
             let switch = Rc::new(Switch::new(circle.alias.clone(), self.serial.clone()));
             match circle.default {
-                config::CircleSetting::On => self.serial.switch_on(&circle.alias),
-                config::CircleSetting::Off => self.serial.switch_off(&circle.alias),
+                config::CircleSetting::On => switch.set_switch_state(Context::On),
+                config::CircleSetting::Off => switch.set_switch_state(Context::Off),
                 config::CircleSetting::Schedule => {
                     for toggle in circle.toggles.iter() {
                         let start = toggle.start.into_dailyevent(&self.config.device);
@@ -131,7 +151,6 @@ impl TrackerInner {
 
     fn process_tick(&mut self, timestamp: Timespec) {
         if self.initial {
-            self.initial = false;
             let mut tm = at_utc(timestamp);
             tm.tm_hour = 0;
             tm.tm_min = 0;
@@ -150,6 +169,15 @@ impl TrackerInner {
         }
 
         self.schedule.kick_event(timestamp);
+
+        if self.initial {
+            self.initial = false;
+            // configure the switch to actually set the relay (otherwise the initial kicks will
+            // quickly toggle switches unintendedly
+            for (_, ref mut switch) in self.switches.iter_mut() {
+                switch.make_hot();
+            }
+        }
     }
 
     // XXX remove in time
