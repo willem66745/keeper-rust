@@ -13,15 +13,19 @@ struct NtpFetcher {
     last_sync: Arc<Mutex<(Timespec, u64)>>,
     poll: Duration,
     last_poll: u64,
+    ntp_update: Arc<(Mutex<bool>, Condvar)>,
 }
 
 impl NtpFetcher {
-    fn new(server: String, ntp_poll: Duration) -> NtpFetcher {
+    fn new(server: String,
+           ntp_poll: Duration,
+           ntp_update: Arc<(Mutex<bool>, Condvar)>) -> NtpFetcher {
         let mut ntp = NtpFetcher {
             server: server,
             last_sync: Arc::new(Mutex::new((Timespec::new(0,0), 0))),
             poll: ntp_poll,
             last_poll: 0,
+            ntp_update: ntp_update,
         };
 
         ntp.consider_poll_ntp();
@@ -32,8 +36,8 @@ impl NtpFetcher {
         if let Ok(ref lock) = self.last_sync.lock() {
             let (_, ref_time) = **lock;
             let poll_interval = if ref_time == 0 {
-                // when never NTP timestamp was received, try again after 10 minutes
-                Duration::minutes(10)
+                // when never NTP timestamp was received, try again after 1 minute
+                Duration::minutes(1)
             } else {
                 self.poll
             };
@@ -46,14 +50,22 @@ impl NtpFetcher {
                 self.last_poll = curr;
                 let sync = self.last_sync.clone();
                 let server = self.server.clone();
+                let update = self.ntp_update.clone();
 
-                thread::spawn(move || {
+                let join = thread::spawn(move || {
                     if let Ok(ts) = retrieve_ntp_timestamp(&server[..]) {
                         if let Ok(ref mut lock) = sync.lock() {
+                            let (_, ref_time) = **lock;
                             **lock = (ts, precise_time_ns());
+                            if ref_time == 0 {
+                                // notify ntp listener that a initial ntp result is known
+                                let &(_, ref cvar) = &*update;
+                                cvar.notify_all();
+                            }
                         }
                     }
                 });
+                drop(join);
             }
         }
     }
@@ -93,7 +105,7 @@ impl<C> Ticker<C> where C: Send + Copy + 'static {
         let server = server.into();
 
         let joiner = thread::spawn(move || {
-            let mut ntp = NtpFetcher::new(server, ntp_poll);
+            let mut ntp = NtpFetcher::new(server, ntp_poll, waiter.clone());
             let &(ref lock, ref cvar) = &*waiter;
             let mut leaver = lock.lock().ok().expect("BUG: mutex cannot claimed inside thread");
 
