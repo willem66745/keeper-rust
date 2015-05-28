@@ -181,24 +181,25 @@ impl TrackerInner {
     }
 }
 
-pub struct Tracker {
-    zoneinfo: ZoneInfo,
-    inner: TrackerInner,
-}
-
 #[derive(Copy, Clone)]
 enum Message {
     Tick,
     Teardown,
 }
 
+pub struct Tracker {
+    tx: Sender<(Message, Option<Timespec>)>,
+    join: thread::JoinHandle<()>,
+}
+
 impl Tracker {
-    pub fn spawn(configfile: path::PathBuf) -> TrackerClient {
+    pub fn spawn(configfile: path::PathBuf) -> Tracker {
+        let zoneinfo = ZoneInfo::get_local_zoneinfo().ok().expect("BUG: not able to load local zoneinfo");
         let (tx, rx) = channel();
 
         let joiner = thread::spawn(move || {
             let config = config::Config::new(&configfile).unwrap(); // XXX
-            let mut tracker = Tracker::new(&config);
+            let mut tracker = TrackerInner::new(&config, &zoneinfo);
             let ticker = Ticker::spawn(&config.device.ntp_server,
                                        Duration::seconds(10),
                                        Duration::days(1),
@@ -211,7 +212,7 @@ impl Tracker {
                     Message::Tick => {
                         if let Some(timestamp) = timestamp {
                             println!("tick: {}", at(timestamp).asctime());
-                            tracker.inner.process_tick(timestamp);
+                            tracker.process_tick(timestamp);
                         }
                     },
                     Message::Teardown => {
@@ -224,30 +225,12 @@ impl Tracker {
 
         let sender = rx.recv().ok().expect("BUG: tracker thread unable to bootstrap");
 
-        TrackerClient {
+        Tracker {
             tx: sender,
             join: joiner
         }
     }
 
-    fn new(config: &config::Config) -> Tracker {
-        let zoneinfo = ZoneInfo::get_local_zoneinfo().ok().expect("BUG: not able to load local zoneinfo");
-            
-        let tracker = Tracker {
-            inner: TrackerInner::new(config, &zoneinfo),
-            zoneinfo: zoneinfo,
-        };
-
-        tracker
-    }
-}
-
-pub struct TrackerClient {
-    tx: Sender<(Message, Option<Timespec>)>,
-    join: thread::JoinHandle<()>,
-}
-
-impl TrackerClient {
     pub fn teardown(self) {
         (&self).tx.send((Message::Teardown, None)).ok().expect("BUG: not able to shutdown tracker");
         self.join();
