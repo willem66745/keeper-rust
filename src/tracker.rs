@@ -5,8 +5,11 @@ use std::path;
 use std::rc::Rc;
 use super::config;
 use super::serial;
-use time::{Duration, Timespec, at_utc, at, now_utc};
+use time::{Duration, Timespec, at_utc, at};
 use zoneinfo::ZoneInfo;
+use ticker::Ticker;
+use std::sync::mpsc::{channel, Sender};
+use std::thread;
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
 enum Context {
@@ -179,21 +182,6 @@ impl TrackerInner {
             }
         }
     }
-
-    // XXX remove in time
-    fn fast_forward(&mut self) {
-        let mut now = now_utc().to_timespec();
-
-        loop {
-            match self.schedule.kick_event(now) {
-                Some(next) => {
-                    now = next;
-                }
-                None => break
-            }
-        }
-    }
-
 }
 
 pub struct Tracker {
@@ -202,8 +190,47 @@ pub struct Tracker {
     inner: TrackerInner,
 }
 
+#[derive(Copy, Clone)]
+enum Message {
+    Tick,
+    Teardown,
+}
+
 impl Tracker {
-    pub fn new(configfile: path::PathBuf) -> Tracker {
+    pub fn spawn(configfile: path::PathBuf) -> TrackerClient {
+        let (tx, rx) = channel();
+
+        let joiner = thread::spawn(move || {
+            let mut tracker = Tracker::new(configfile);
+            let ticker = Ticker::spawn("nl.pool.ntp.org", Duration::seconds(10), Duration::days(1), Message::Tick);
+
+            tx.send(ticker.get_sender()).ok().expect("BUG: tracker thread unable to communicate with spawner");
+
+            for (event, timestamp) in ticker.recv_iter() {
+                match event {
+                    Message::Tick => {
+                        if let Some(timestamp) = timestamp {
+                            println!("tick: {}", at(timestamp).asctime());
+                            tracker.inner.process_tick(timestamp);
+                        }
+                    },
+                    Message::Teardown => {
+                        break;
+                    },
+                }
+            }
+            ticker.stop_ticker();
+        });
+
+        let sender = rx.recv().ok().expect("BUG: tracker thread unable to bootstrap");
+
+        TrackerClient {
+            tx: sender,
+            join: joiner
+        }
+    }
+
+    fn new(configfile: path::PathBuf) -> Tracker {
         let zoneinfo = ZoneInfo::get_local_zoneinfo().ok().expect("BUG: not able to load local zoneinfo");
             
         let tracker = Tracker {
@@ -214,19 +241,20 @@ impl Tracker {
 
         tracker
     }
-
-    pub fn process_tick(&mut self, timestamp: Timespec) {
-        self.inner.process_tick(timestamp);
-    }
-
-    // XXX remove in time
-    pub fn update_schedule(&mut self) {
-        self.inner.update_schedule();
-    }
-
-    // XXX remove in time
-    pub fn fast_forward(&mut self) {
-        self.inner.fast_forward();
-    }
 }
 
+pub struct TrackerClient {
+    tx: Sender<(Message, Option<Timespec>)>,
+    join: thread::JoinHandle<()>,
+}
+
+impl TrackerClient {
+    pub fn teardown(self) {
+        (&self).tx.send((Message::Teardown, None)).ok().expect("BUG: not able to shutdown tracker");
+        self.join();
+    }
+
+    pub fn join(self) {
+        self.join.join().ok().expect("BUG: not able to join tracker");
+    }
+}
