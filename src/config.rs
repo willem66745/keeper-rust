@@ -33,6 +33,7 @@ pub enum Error {
     ScheduleExpected(String),
     InvalidMac(String),
     InvalidDefault(String),
+    MissingConfig,
     MissingNTP,
     LocationMissing,
     InvalidToml,
@@ -315,7 +316,7 @@ impl Config {
         }
 
         Ok(Config {
-            device: device.unwrap(),
+            device: try!(device.ok_or(Error::MissingConfig)),
             circles: circles
         })
     }
