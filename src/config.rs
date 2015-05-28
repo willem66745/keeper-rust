@@ -17,6 +17,7 @@ const CONFIG_HEAD: &'static str = "config";
 const CONFIG_DEVICE: &'static str = "device";
 const CONFIG_LATITUDE: &'static str = "latitude";
 const CONFIG_LONGITUDE: &'static str = "longitude";
+const CONFIG_NTP_SERVER: &'static str = "ntp";
 const CIRCLE_MAC: &'static str = "mac";
 const CIRCLE_DEFAULT: &'static str = "default";
 
@@ -32,6 +33,7 @@ pub enum Error {
     ScheduleExpected(String),
     InvalidMac(String),
     InvalidDefault(String),
+    MissingNTP,
     LocationMissing,
     InvalidToml,
 }
@@ -237,14 +239,16 @@ impl Circle {
 pub struct Device {
     pub serial_device: Option<String>,
     pub latitude: f64,
-    pub longitude: f64
+    pub longitude: f64,
+    pub ntp_server: String,
 }
 
 impl Device {
-    fn new(table: &toml::Table) -> Option<Device> {
+    fn new(table: &toml::Table) -> Result<Device> {
         let mut serial_device = None;
         let mut latitude = None;
         let mut longitude = None;
+        let mut ntp = None;
 
         for (k, v) in table {
             match &k[..] {
@@ -263,13 +267,21 @@ impl Device {
                         longitude = Some(long);
                     }
                 },
+                CONFIG_NTP_SERVER => {
+                    if let Some(string) = v.as_str() {
+                        ntp = Some(string.into());
+                    }
+                },
                 _ => {}
             }
         }
 
-        latitude.map_or(None, |lat| longitude.map_or(None, |long| serial_device.map_or(
-                    Some(Device{serial_device: None, latitude:lat, longitude:long}),
-                    |dev| Some(Device{serial_device: Some(dev), latitude:lat, longitude: long}))))
+        latitude.map_or(Err(Error::LocationMissing), |lat|
+             longitude.map_or(Err(Error::LocationMissing), |long|
+             ntp.map_or(Err(Error::MissingNTP), |ntp:String|
+             serial_device.map_or(
+                    Ok(Device{serial_device: None, latitude:lat, longitude:long, ntp_server:ntp.clone()}),
+                    |dev| Ok(Device{serial_device: Some(dev), latitude:lat, longitude: long, ntp_server:ntp.clone()})))))
     }
 }
 
@@ -293,7 +305,7 @@ impl Config {
             if let Some(table) = v.as_table() {
                 match &k[..] {
                     CONFIG_HEAD => {
-                        device = Device::new(table);
+                        device = Some(try!(Device::new(table)));
                     },
                     _ => {
                         circles.push(try!(Circle::new(&k[..], table)));
@@ -303,7 +315,7 @@ impl Config {
         }
 
         Ok(Config {
-            device: try!(device.ok_or(Error::LocationMissing)),
+            device: device.unwrap(),
             circles: circles
         })
     }

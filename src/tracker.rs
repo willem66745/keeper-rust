@@ -97,7 +97,6 @@ impl Handler<Context> for Switch {
 
 struct TrackerInner {
     serial: serial::SerialClient,
-    config: config::Config,
     schedule: Schedule<Context, Switch>,
     schedule_ref: Timespec,
     initial: bool,
@@ -105,17 +104,17 @@ struct TrackerInner {
 }
 
 impl TrackerInner {
-    fn load_schedule(&mut self) {
+    fn load_schedule(&mut self, config: &config::Config) {
         self.switches.clear();
-        for circle in self.config.circles.iter() {
+        for circle in config.circles.iter() {
             let switch = Rc::new(Switch::new(circle.alias.clone(), self.serial.clone()));
             match circle.default {
                 config::CircleSetting::On => switch.set_switch_state(Context::On),
                 config::CircleSetting::Off => switch.set_switch_state(Context::Off),
                 config::CircleSetting::Schedule => {
                     for toggle in circle.toggles.iter() {
-                        let start = toggle.start.into_dailyevent(&self.config.device);
-                        let end = toggle.end.into_dailyevent(&self.config.device);
+                        let start = toggle.start.into_dailyevent(&config.device);
+                        let end = toggle.end.into_dailyevent(&config.device);
 
                         self.schedule.add_event(start, switch.clone(), Context::On);
                         self.schedule.add_event(end, switch.clone(), Context::Off);
@@ -126,15 +125,13 @@ impl TrackerInner {
         }
     }
 
-    fn new(configfile: &path::PathBuf, zoneinfo: &ZoneInfo) -> TrackerInner {
-        let config = config::Config::new(configfile).unwrap(); // XXX
+    fn new(config: &config::Config, zoneinfo: &ZoneInfo) -> TrackerInner {
         let schedule = Schedule::new(zoneinfo.clone());
         let serial = serial::Serial::spawn();
 
         // XXX: register circles / connect etc...
 
         let mut tracker = TrackerInner {
-            config: config,
             schedule: schedule,
             serial: serial,
             schedule_ref: Timespec::new(0,0),
@@ -142,7 +139,7 @@ impl TrackerInner {
             switches: BTreeMap::new(),
         };
 
-        tracker.load_schedule();
+        tracker.load_schedule(config);
 
         tracker
     }
@@ -186,7 +183,6 @@ impl TrackerInner {
 
 pub struct Tracker {
     zoneinfo: ZoneInfo,
-    path: path::PathBuf,
     inner: TrackerInner,
 }
 
@@ -201,8 +197,12 @@ impl Tracker {
         let (tx, rx) = channel();
 
         let joiner = thread::spawn(move || {
-            let mut tracker = Tracker::new(configfile);
-            let ticker = Ticker::spawn("nl.pool.ntp.org", Duration::seconds(10), Duration::days(1), Message::Tick);
+            let config = config::Config::new(&configfile).unwrap(); // XXX
+            let mut tracker = Tracker::new(&config);
+            let ticker = Ticker::spawn(&config.device.ntp_server,
+                                       Duration::seconds(10),
+                                       Duration::days(1),
+                                       Message::Tick);
 
             tx.send(ticker.get_sender()).ok().expect("BUG: tracker thread unable to communicate with spawner");
 
@@ -230,12 +230,11 @@ impl Tracker {
         }
     }
 
-    fn new(configfile: path::PathBuf) -> Tracker {
+    fn new(config: &config::Config) -> Tracker {
         let zoneinfo = ZoneInfo::get_local_zoneinfo().ok().expect("BUG: not able to load local zoneinfo");
             
         let tracker = Tracker {
-            inner: TrackerInner::new(&configfile, &zoneinfo),
-            path: configfile,
+            inner: TrackerInner::new(config, &zoneinfo),
             zoneinfo: zoneinfo,
         };
 
