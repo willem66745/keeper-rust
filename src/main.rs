@@ -1,7 +1,18 @@
 
-extern crate keeper;
+extern crate dailyschedule;
+extern crate daylight;
+extern crate ntpclient;
+extern crate plugwise;
+extern crate time;
+extern crate toml;
+extern crate zoneinfo;
 
-use keeper::tracker::Tracker;
+mod config;
+mod serial;
+mod tracker;
+mod ticker;
+
+use tracker::Tracker;
 use std::env;
 
 #[cfg(not(test))]
