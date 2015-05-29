@@ -216,7 +216,6 @@ impl Tracker {
                 match event {
                     Message::Tick => {
                         if let Some(timestamp) = timestamp {
-                            println!("tick: {}", at(timestamp).asctime());
                             tracker.process_tick(timestamp);
                         }
                     },
