@@ -106,7 +106,12 @@ struct TrackerInner {
 impl TrackerInner {
     fn load_schedule(&mut self, config: &config::Config) {
         self.switches.clear();
+        match config.device.serial_device {
+            None => self.serial.connect_stub(),
+            Some(ref dev) => self.serial.connect_device(&dev[..]).unwrap() // XXX
+        }
         for circle in config.circles.iter() {
+            self.serial.register_circle(&circle.alias, circle.mac);
             let switch = Rc::new(Switch::new(circle.alias.clone(), self.serial.clone()));
             match circle.default {
                 config::CircleSetting::On => switch.set_switch_state(Context::On),
