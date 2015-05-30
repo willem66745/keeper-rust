@@ -4,6 +4,8 @@ version = "0.1.0"
 dependencies = [
  "dailyschedule 0.0.1 (git+https://github.com/willem66745/dailyschedule-rust)",
  "daylight 0.0.1 (git+https://github.com/willem66745/daylight-rust)",
+ "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log4rs 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "ntpclient 0.0.1 (git+https://github.com/willem66745/ntpclient-rust)",
  "plugwise 0.0.1 (git+https://github.com/willem66745/plugwise-rust)",
  "time 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -56,6 +58,24 @@ dependencies = [
 name = "libc"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "log"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "libc 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "log4rs"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "time 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
+ "toml 0.1.20 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "ntpclient"

@@ -48,6 +48,7 @@ impl Switch {
 
     fn dispatch_context(&self) {
         if self.hot.get() {
+            info!("{}: {:?}", self.alias, self.state.get());
             match self.state.get() {
                 Context::Off => self.serial.switch_off(&self.alias[..]),
                 Context::On => self.serial.switch_on(&self.alias[..]),
@@ -70,6 +71,8 @@ impl Handler<Context> for Switch {
             &Context::On => self.last_on.set(*ts),
             &Context::Off => {
                 if *ts > self.last_on.get() {
+                    debug!("scheduled: {} On  {}", at(self.last_on.get()).asctime(), self.alias);
+                    debug!("scheduled: {} Off {}", at(*ts).asctime(), self.alias);
                     let mut events = self.valid_events.borrow_mut();
                     events.insert(self.last_on.get(), Context::On);
                     events.insert(*ts, Context::Off);
@@ -81,8 +84,8 @@ impl Handler<Context> for Switch {
     /// Perform action only when the timestamp is considered valid;
     /// Remove the current or prior timestamps from the expected timestamps.
     fn kick(&self, ts: &Timespec, context: &Context) {
+        debug!("kick: {} {:?} {}", at(*ts).asctime(), context, self.alias);
         if self.valid_events.borrow().contains_key(ts) {
-            println!("XXX: {} {:?} {}", at(*ts).asctime(), context, self.alias); // XXX
             self.set_switch_state(*context);
 
             let mut events = self.valid_events.borrow_mut();

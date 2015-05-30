@@ -6,6 +6,8 @@ authors = ["Willem <willem66745@gmail.com>"]
 [dependencies]
 toml = "*"
 time = "*"
+log = "*"
+log4rs = "*"
 
 [dependencies.plugwise]
 git = "https://github.com/willem66745/plugwise-rust"
