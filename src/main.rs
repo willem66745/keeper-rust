@@ -1,8 +1,7 @@
 
 extern crate dailyschedule;
 extern crate daylight;
-#[macro_use]
-extern crate log;
+#[macro_use] extern crate log;
 extern crate log4rs;
 extern crate ntpclient;
 extern crate plugwise;
