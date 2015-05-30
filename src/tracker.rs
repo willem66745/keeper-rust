@@ -137,8 +137,6 @@ impl TrackerInner {
         let schedule = Schedule::new(zoneinfo.clone());
         let serial = serial::Serial::spawn();
 
-        // XXX: register circles / connect etc...
-
         let mut tracker = TrackerInner {
             schedule: schedule,
             serial: serial,
@@ -228,6 +226,7 @@ impl Tracker {
                 }
             }
             ticker.stop_ticker();
+            tracker.serial.hangup();
         });
 
         let sender = rx.recv().ok().expect("BUG: tracker thread unable to bootstrap");
@@ -238,10 +237,10 @@ impl Tracker {
         }
     }
 
-    pub fn teardown(self) {
-        (&self).tx.send((Message::Teardown, None)).ok().expect("BUG: not able to shutdown tracker");
-        self.join();
-    }
+    //pub fn teardown(self) {
+    //    (&self).tx.send((Message::Teardown, None)).ok().expect("BUG: not able to shutdown tracker");
+    //    self.join();
+    //}
 
     pub fn join(self) {
         self.join.join().ok().expect("BUG: not able to join tracker");

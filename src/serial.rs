@@ -159,25 +159,19 @@ impl SerialClient {
                .ok()
                .expect("BUG: cannot bring serial thread down");
     }
-    
-    pub fn async_connect_device(&self, device: &str) {
-        self.tx.send(Command::ConnectDevice(None, device.into()))
-               .ok()
-               .expect("BUG: serial thread channel error");
-    }
 
     pub fn register_circle(&self, alias: &str, mac: u64) {
         self.tx.send(Command::RegisterCircle(alias.into(), mac))
                .ok()
                .expect("BUG: cannot register circle");
     }
-    
+
     pub fn switch_on(&self, alias: &str) {
         self.tx.send(Command::SwitchOn(alias.into()))
                .ok()
                .expect("BUG: unable to request to switch circle on");
     }
-    
+
     pub fn switch_off(&self, alias: &str) {
         self.tx.send(Command::SwitchOff(alias.into()))
                .ok()
