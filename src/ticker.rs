@@ -3,7 +3,7 @@ use ntpclient::retrieve_ntp_timestamp;
 use std::sync::{Arc, Mutex, Condvar};
 use std::sync::mpsc::{channel, Sender, Receiver, Iter};
 use std::thread;
-use time::{Timespec, Duration, precise_time_ns};
+use time::{Timespec, Duration, precise_time_ns, at};
 
 const BILLION: u64 = 1_000_000_000;
 
@@ -55,6 +55,7 @@ impl NtpFetcher {
                 let join = thread::spawn(move || {
                     if let Ok(ts) = retrieve_ntp_timestamp(&server[..]) {
                         if let Ok(ref mut lock) = sync.lock() {
+                            debug!("updated internet time: {}", at(ts).asctime());
                             let (_, ref_time) = **lock;
                             **lock = (ts, precise_time_ns());
                             if ref_time == 0 {
