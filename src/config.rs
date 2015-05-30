@@ -147,8 +147,8 @@ impl Event {
                     Filter::Always,
                     Box::new(move|t| {
                         let daylight = calculate_daylight(at_utc(t), latitude, longitude);
-                        let dusk = Duration::seconds((daylight.sunset -
-                                                      daylight.twilight_evening).num_seconds() / 2);
+                        let dusk = Duration::seconds((daylight.twilight_evening -
+                                                      daylight.sunset).num_seconds() / 2);
                         Moment::new_from_timespec(daylight.sunset + dusk)
                     }), Duration::minutes(m as i64)),
         }
