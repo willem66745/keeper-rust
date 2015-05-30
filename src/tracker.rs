@@ -84,8 +84,8 @@ impl Handler<Context> for Switch {
     /// Perform action only when the timestamp is considered valid;
     /// Remove the current or prior timestamps from the expected timestamps.
     fn kick(&self, ts: &Timespec, context: &Context) {
-        debug!("kick: {} {:?} {}", at(*ts).asctime(), context, self.alias);
         if self.valid_events.borrow().contains_key(ts) {
+            debug!("kick: {} {:?} {}", at(*ts).asctime(), context, self.alias);
             self.set_switch_state(*context);
 
             let mut events = self.valid_events.borrow_mut();
