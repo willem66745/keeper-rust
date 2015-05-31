@@ -9,6 +9,8 @@ time = "*"
 log = "*"
 log4rs = "*"
 iron = "*"
+router = "*"
+rustc-serialize = "*"
 #staticfile = "*"
 
 # FIXME: change to crates.io version when possible

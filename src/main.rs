@@ -8,11 +8,15 @@ extern crate plugwise;
 extern crate time;
 extern crate toml;
 extern crate zoneinfo;
+extern crate iron;
+extern crate router;
+extern crate rustc_serialize;
 
 mod config;
 mod serial;
 mod tracker;
 mod ticker;
+mod web;
 
 use tracker::Tracker;
 use std::env;
@@ -28,5 +32,7 @@ fn main() {
     let mut configfile = env::home_dir().expect("BUG: unable to find home/user directory");
     configfile.push(CONFIG);
     let tracker = Tracker::spawn(configfile);
-    tracker.join();
+    let mut web = web::Web::new();
+    web.serve(tracker.get_client());
+    tracker.teardown();
 }

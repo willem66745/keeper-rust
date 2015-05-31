@@ -8,6 +8,7 @@ use super::serial;
 use time::{Duration, Timespec, at_utc, at};
 use zoneinfo::ZoneInfo;
 use ticker::Ticker;
+use std::sync::{Arc, Mutex};
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
 
@@ -185,12 +186,23 @@ impl TrackerInner {
             }
         }
     }
+
+    fn get_list(&self) -> Vec<String> {
+        let mut switches = vec![];
+
+        for (switch, _) in self.switches.iter() {
+            switches.push(switch.clone());
+        }
+
+        switches
+    }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 enum Message {
     Tick,
     Teardown,
+    List(Sender<Vec<String>>),
 }
 
 pub struct Tracker {
@@ -223,6 +235,9 @@ impl Tracker {
                     Message::Teardown => {
                         break;
                     },
+                    Message::List(ref sender) => {
+                        sender.send(tracker.get_list()).ok().expect("BUG: unable to send switch list");
+                    },
                 }
             }
             ticker.stop_ticker();
@@ -237,12 +252,32 @@ impl Tracker {
         }
     }
 
-    //pub fn teardown(self) {
-    //    (&self).tx.send((Message::Teardown, None)).ok().expect("BUG: not able to shutdown tracker");
-    //    self.join();
-    //}
+    pub fn get_client(&self) -> TrackerClient {
+        TrackerClient {
+            tx: Arc::new(Mutex::new(self.tx.clone()))
+        }
+    }
+
+    pub fn teardown(self) {
+        (&self).tx.send((Message::Teardown, None)).ok().expect("BUG: not able to shutdown tracker");
+        self.join();
+    }
 
     pub fn join(self) {
         self.join.join().ok().expect("BUG: not able to join tracker");
+    }
+}
+
+#[derive(Clone)]
+pub struct TrackerClient {
+    tx: Arc<Mutex<Sender<(Message, Option<Timespec>)>>>,
+}
+
+impl TrackerClient {
+    pub fn get_list(&self) -> Vec<String> {
+        let tracker = self.tx.lock().ok().expect("BUG: unable to get channel");
+        let (tx, rx) = channel();
+        tracker.send((Message::List(tx), None)).ok().expect("BUG: unable to get list");
+        rx.recv().ok().expect("BUG: unable to receive list")
     }
 }
