@@ -97,7 +97,7 @@ pub struct Ticker<C> {
     leave_guard: Arc<(Mutex<bool>, Condvar)>,
 }
 
-impl<C> Ticker<C> where C: Send + Copy + 'static {
+impl<C> Ticker<C> where C: Send + Clone + 'static {
     pub fn spawn(server: &str, tick_interval: Duration, ntp_poll: Duration, event: C) -> Ticker<C> {
         let (tx, rx) = channel();
         let leave_guard = Arc::new((Mutex::new(true), Condvar::new()));
@@ -121,7 +121,7 @@ impl<C> Ticker<C> where C: Send + Copy + 'static {
 
                 if *leaver {
                     if let Some(ts) = ntp.get_timespec() {
-                        tx.send((event, Some(ts))).ok().expect("BUG: cannot send timestamp");
+                        tx.send((event.clone(), Some(ts))).ok().expect("BUG: cannot send timestamp");
                     }
                 }
             }
