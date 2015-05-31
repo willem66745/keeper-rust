@@ -56,6 +56,31 @@ impl Web {
                 }))
         });
 
+        // JSON: toggle switch
+        let tracker4switch = tracker.clone();
+        router.get("/switch/:switch/:state", move|req: &mut Request| {
+            let params = req.extensions.get::<Router>().unwrap();
+            let ref switch = params.find("switch");
+            let ref state = params.find("state");
+
+            Ok(switch.and_then(|ref switch| state.and_then(|ref state| {
+                match *state {
+                    "on"|"off" => {
+                        let state = match *state {
+                            "off" => Context::Off,
+                            "on" => Context::On,
+                            _ => panic!("impossible to reach"),
+                        };
+                        let new_state = tracker4switch.switch(switch, state) == Context::On;
+                        let json = json::as_json(&new_state);
+                        let content_type = "application/json".parse::<Mime>().unwrap();
+                        Some(Response::with((content_type, status::Ok, format!("{}", json))))
+                    },
+                    _ => None
+                }
+            })).unwrap_or(Response::with(status::NotFound)))
+        });
+
         Iron::new(router).http("0.0.0.0:3000").unwrap();
     }
 }

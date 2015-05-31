@@ -216,6 +216,7 @@ enum Message {
     Teardown,
     List(Sender<Vec<String>>),
     Get(String, Sender<Option<(Context, BTreeMap<Timespec, Context>)>>),
+    Switch(String, Context, Sender<Context>),
 }
 
 pub struct Tracker {
@@ -255,6 +256,15 @@ impl Tracker {
                         let switch = tracker.get_switch(switch);
                         let result = switch.map(|switch|(switch.get_state(), switch.get_future_events()));
                         sender.send(result).ok().expect("BUG: unable to send switch status");
+                    },
+                    Message::Switch(ref switch, ref state, ref sender) => {
+                        let switch = tracker.get_switch(switch);
+                        let result = switch.map(|switch| {
+                            switch.set_switch_state(*state);
+                            switch.get_state()
+                        }).unwrap_or(Context::Off);
+
+                        sender.send(result).ok().expect("BUG: unable to send toggle result");
                     },
                 }
             }
@@ -306,5 +316,14 @@ impl TrackerClient {
             .ok()
             .expect("BUG: unable to get switch status");
         rx.recv().ok().expect("BUG: unable to receive switch status")
+    }
+
+    pub fn switch(&self, switch: &str, state: Context) -> Context {
+        let tracker = self.tx.lock().ok().expect("BUG: unable to get channel");
+        let (tx, rx) = channel();
+        tracker.send((Message::Switch(switch.into(), state, tx), None))
+            .ok()
+            .expect("BUG: unable to toggle switch");
+        rx.recv().ok().expect("BUG: unable to get toggle result")
     }
 }
