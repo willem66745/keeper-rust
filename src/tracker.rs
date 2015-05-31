@@ -13,7 +13,7 @@ use std::sync::mpsc::{channel, Sender};
 use std::thread;
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
-enum Context {
+pub enum Context {
     Off,
     On
 }
@@ -60,6 +60,14 @@ impl Switch {
     fn make_hot(&self) {
         self.hot.set(true);
         self.dispatch_context();
+    }
+
+    fn get_state(&self) -> Context {
+        self.state.get()
+    }
+
+    fn get_future_events(&self) -> BTreeMap<Timespec, Context> {
+        self.valid_events.borrow().clone()
     }
 }
 
@@ -196,6 +204,10 @@ impl TrackerInner {
 
         switches
     }
+
+    fn get_switch(&self, key: &str) -> Option<&Rc<Switch>> {
+        self.switches.get(key)
+    }
 }
 
 #[derive(Clone)]
@@ -203,6 +215,7 @@ enum Message {
     Tick,
     Teardown,
     List(Sender<Vec<String>>),
+    Get(String, Sender<Option<(Context, BTreeMap<Timespec, Context>)>>),
 }
 
 pub struct Tracker {
@@ -237,6 +250,11 @@ impl Tracker {
                     },
                     Message::List(ref sender) => {
                         sender.send(tracker.get_list()).ok().expect("BUG: unable to send switch list");
+                    },
+                    Message::Get(ref switch, ref sender) => {
+                        let switch = tracker.get_switch(switch);
+                        let result = switch.map(|switch|(switch.get_state(), switch.get_future_events()));
+                        sender.send(result).ok().expect("BUG: unable to send switch status");
                     },
                 }
             }
@@ -279,5 +297,14 @@ impl TrackerClient {
         let (tx, rx) = channel();
         tracker.send((Message::List(tx), None)).ok().expect("BUG: unable to get list");
         rx.recv().ok().expect("BUG: unable to receive list")
+    }
+
+    pub fn get_switch(&self, switch: &str) -> Option<(Context, BTreeMap<Timespec, Context>)> {
+        let tracker = self.tx.lock().ok().expect("BUG: unable to get channel");
+        let (tx, rx) = channel();
+        tracker.send((Message::Get(switch.into(), tx), None))
+            .ok()
+            .expect("BUG: unable to get switch status");
+        rx.recv().ok().expect("BUG: unable to receive switch status")
     }
 }
