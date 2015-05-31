@@ -11,6 +11,7 @@ log4rs = "*"
 iron = "*"
 router = "*"
 rustc-serialize = "*"
+mount = "*"
 #staticfile = "*"
 
 # FIXME: change to crates.io version when possible

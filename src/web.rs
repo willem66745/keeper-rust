@@ -6,6 +6,9 @@ use super::tracker::{TrackerClient, Context};
 use rustc_serialize::json;
 use std::collections::BTreeMap;
 use time::at_utc;
+use std::path::Path;
+use staticfile::Static;
+use mount::Mount;
 
 pub struct Web;
 
@@ -81,6 +84,12 @@ impl Web {
             })).unwrap_or(Response::with(status::NotFound)))
         });
 
-        Iron::new(router).http("0.0.0.0:3000").unwrap();
+        let mut mount = Mount::new();
+
+        mount
+            .mount("/", Static::new(Path::new("web/")))
+            .mount("/api", router);
+
+        Iron::new(mount).http("0.0.0.0:3000").unwrap();
     }
 }
