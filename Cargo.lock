@@ -77,11 +77,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "filetime"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
 name = "gcc"
 version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -325,9 +320,8 @@ dependencies = [
 [[package]]
 name = "staticfile"
 version = "0.0.2"
-source = "git+https://github.com/iron/staticfile#499b146f41adb21fbbae28a84d05a42f81d97997"
+source = "git+https://github.com/iron/staticfile#c685d865a372de6a296e49c85026bc53fe4e9e93"
 dependencies = [
- "filetime 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "iron 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "mount 0.0.7 (registry+https://github.com/rust-lang/crates.io-index)",
