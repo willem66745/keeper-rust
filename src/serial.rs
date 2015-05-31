@@ -178,5 +178,3 @@ impl SerialClient {
                .expect("BUG: unable to request to switch circle off");
     }
 }
-
-

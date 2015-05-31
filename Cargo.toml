@@ -8,6 +8,12 @@ toml = "*"
 time = "*"
 log = "*"
 log4rs = "*"
+iron = "*"
+#staticfile = "*"
+
+# FIXME: change to crates.io version when possible
+[dependencies.staticfile]
+git = "https://github.com/iron/staticfile"
 
 [dependencies.plugwise]
 git = "https://github.com/willem66745/plugwise-rust"
