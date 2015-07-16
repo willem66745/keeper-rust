@@ -22,7 +22,7 @@ impl Web {
 
         // JSON: get available switches
         let tracker4switch = tracker.clone();
-        router.get("/switches", move|_: &mut Request| {
+        router.post("/switches", move|_: &mut Request| {
             let switches = tracker4switch.get_list();
             let content_type = "application/json".parse::<Mime>().unwrap();
             Ok(Response::with((content_type, status::Ok, format!("{}", json::as_json(&switches)))))
@@ -30,7 +30,7 @@ impl Web {
 
         // JSON: retrieve switch status
         let tracker4get = tracker.clone();
-        router.get("/get/:switch", move|req: &mut Request| {
+        router.post("/get/:switch", move|req: &mut Request| {
             let ref switch = req.extensions.get::<Router>().unwrap().find("switch");
             let content_type = "application/json".parse::<Mime>().unwrap();
 
@@ -61,7 +61,7 @@ impl Web {
 
         // JSON: toggle switch
         let tracker4switch = tracker.clone();
-        router.get("/switch/:switch/:state", move|req: &mut Request| {
+        router.post("/switch/:switch/:state", move|req: &mut Request| {
             let params = req.extensions.get::<Router>().unwrap();
             let ref switch = params.find("switch");
             let ref state = params.find("state");
