@@ -12,11 +12,7 @@ iron = "*"
 router = "*"
 rustc-serialize = "*"
 mount = "*"
-#staticfile = "*"
-
-# FIXME: change to crates.io version when possible
-[dependencies.staticfile]
-git = "https://github.com/iron/staticfile"
+staticfile = "*"
 
 [dependencies.plugwise]
 git = "https://github.com/willem66745/plugwise-rust"
