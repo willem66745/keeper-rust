@@ -14,8 +14,6 @@ function hide_loader() {
 }
 
 // Retrieve all switch configurations and update web user interface
-//
-// See: http://demos.jquerymobile.com/1.4.5/listview/
 function load_switches() {
     show_loader();
 
@@ -26,9 +24,21 @@ function load_switches() {
         $("#content").hide();
 
         $.each(data, function(index, object) {
-            var li = $("#content").append('<li>' + object + '</li>');
+            var li = $("#content").append('<li class="ui-field-contain"><a href="#details">'
+                    + '<h2>' + object + '</h2>'
+                    + '<p><select name="flip_' + object + '" id="flip_' + object + '" data-role="slider" data-mini="true">'
+                        + '<option value="off">Off</option>'
+                        + '<option value="on">On</option>'
+                    + '</select></p>'
+                    + '</a></li>');
 
             li = li.find("li").last();
+            var flip = li.find("#flip_" + object);
+            flip.slider().change(function(event) {
+                $.post("/api/switch/" + object + "/" + $(this).val(), function(data) {
+                    load_switches();
+                });
+            });
 
             $.ajax({
                 url: "/api/get/" + object,
@@ -36,15 +46,14 @@ function load_switches() {
                 async: false,
                 timeout: 2000
             }).done(function(data) {
-                //console.debug(object);
-                //console.debug(data);
                 if (data.switch == true) {
                     // apply light theme when switch is enabled
                     li.attr("data-theme", "a");
-                }
-                else {
+                    flip.val("on").slider("refresh");
+                } else {
                     // apply dark theme when switch is enabled
                     li.attr("data-theme", "b");
+                    flip.val("off").slider("refresh");
                 }
             }).fail(function() {
             }).always(function() {
