@@ -35,8 +35,11 @@ function load_switches() {
             li = li.find("li").last();
             var flip = li.find("#flip_" + object);
             flip.slider().change(function(event) {
+                li.addClass('ui-disabled');
                 $.post("/api/switch/" + object + "/" + $(this).val(), function(data) {
-                    load_switches();
+                    flip.val(data ? "on" : "off").slider("refresh");
+                }).always(function() {
+                    li.removeClass('ui-disabled');
                 });
             });
 
@@ -48,11 +51,11 @@ function load_switches() {
             }).done(function(data) {
                 if (data.switch == true) {
                     // apply light theme when switch is enabled
-                    li.attr("data-theme", "a");
+                    //li.attr("data-theme", "a");
                     flip.val("on").slider("refresh");
                 } else {
                     // apply dark theme when switch is enabled
-                    li.attr("data-theme", "b");
+                    //li.attr("data-theme", "b");
                     flip.val("off").slider("refresh");
                 }
             }).fail(function() {
