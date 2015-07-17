@@ -30,6 +30,7 @@ function load_switches() {
                         + '<option value="off">Off</option>'
                         + '<option value="on">On</option>'
                     + '</select></p>'
+                    + '<p class="ui-li-aside"></p>'
                     + '</a></li>');
 
             li = li.find("li").last();
@@ -50,13 +51,22 @@ function load_switches() {
                 timeout: 2000
             }).done(function(data) {
                 if (data.switch == true) {
-                    // apply light theme when switch is enabled
-                    //li.attr("data-theme", "a");
                     flip.val("on").slider("refresh");
                 } else {
-                    // apply dark theme when switch is enabled
-                    //li.attr("data-theme", "b");
                     flip.val("off").slider("refresh");
+                }
+
+                // update side part of LI item
+                var next_event = Object.keys(data.next_events).shift();
+                var aside = li.find("p.ui-li-aside")
+                if (next_event === undefined) {
+                    aside.html('manual');
+                } else {
+                    var next_state = data.next_events[next_event];
+                    next_event = new Date(Date.parse(next_event));
+                    aside.html("next: "
+                            + next_event.getHours() + ":" + next_event.getMinutes()
+                            + " <strong>" + (next_state ? "on" : "off") + "</strong>");
                 }
             }).fail(function() {
             }).always(function() {
