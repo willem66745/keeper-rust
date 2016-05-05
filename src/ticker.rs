@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex, Condvar};
 use std::sync::mpsc::{channel, Sender, Receiver, Iter};
 use std::thread;
 use time::{Timespec, Duration, precise_time_ns, at};
+use std::time;
 
 const BILLION: u64 = 1_000_000_000;
 
@@ -113,9 +114,9 @@ impl<C> Ticker<C> where C: Send + Clone + 'static {
             // this loop sends the NTP synchronized timestamp to receiving end of the channel
             while *leaver {
                 let (new_leaver, _) =
-                    cvar.wait_timeout_ms(leaver,
-                                         tick_interval.num_milliseconds() as u32).ok().expect(
-                                             "BUG: unexpected error during wait");
+                    cvar.wait_timeout(leaver,
+                                      time::Duration::from_millis(tick_interval.num_milliseconds() as u64)).ok().expect(
+                                          "BUG: unexpected error during wait");
 
                 leaver = new_leaver;
 

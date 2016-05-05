@@ -4,15 +4,15 @@ version = "0.1.0"
 authors = ["Willem <willem66745@gmail.com>"]
 
 [dependencies]
-toml = "*"
-time = "*"
-log = "*"
-log4rs = "*"
-iron = "*"
-router = "*"
-rustc-serialize = "*"
-mount = "*"
-staticfile = "*"
+toml = "0.1"
+time = "0.1"
+log = "0.3"
+log4rs = "0.4"
+iron = "0.3"
+router = "0.1"
+rustc-serialize = "0.3"
+mount = "0.1"
+staticfile = "0.2"
 
 [dependencies.plugwise]
 git = "https://github.com/willem66745/plugwise-rust"
