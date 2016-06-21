@@ -23,17 +23,40 @@ mod web;
 use tracker::Tracker;
 use std::env;
 use std::default::Default;
+use std::path::PathBuf;
 
-const CONFIG: &'static str = ".plugwise.toml";
-const LOGCONFIG: &'static str = ".keeper.log.toml";
+const USER_CONFIG: &'static str = ".plugwise.toml";
+const USER_LOGCONFIG: &'static str = ".keeper.log.toml";
+
+const SYSTEM_CONFIG: &'static str = "/etc/keeper/plugwise.toml";
+const SYSTEM_LOGCONFIG: &'static str = "/etc/keeper/logging.toml";
+
+fn get_config_file(local_config: &str, system_config: &str) -> Option<PathBuf> {
+    if let Some(mut homedir) = env::home_dir() {
+        homedir.push(local_config);
+
+        if homedir.exists() {
+            return Some(homedir)
+        }
+    }
+
+    let path = PathBuf::from(system_config);
+
+    if path.exists() {
+        return Some(path)
+    }
+
+    None
+}
 
 fn main() {
-    let mut logconfigfile = env::home_dir().expect("BUG: unable to find home/user directory");
-    logconfigfile.push(LOGCONFIG);
-    log4rs::init_file(logconfigfile, Default::default()).unwrap();
-    let mut configfile = env::home_dir().expect("BUG: unable to find home/user directory");
-    configfile.push(CONFIG);
-    let tracker = Tracker::spawn(configfile);
+    let logging_config_file = get_config_file(USER_LOGCONFIG, SYSTEM_LOGCONFIG).expect("BUG: unable to find home/user directory");
+    let plugwise_config_file = get_config_file(USER_CONFIG, SYSTEM_CONFIG).expect("BUG: unable to find home/user directory");
+
+    log4rs::init_file(logging_config_file, Default::default()).unwrap();
+
+    let tracker = Tracker::spawn(plugwise_config_file);
+
     let mut web = web::Web::new();
     web.serve(tracker.get_client());
     tracker.teardown();

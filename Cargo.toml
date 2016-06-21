@@ -7,12 +7,15 @@ authors = ["Willem <willem66745@gmail.com>"]
 toml = "0.1"
 time = "0.1"
 log = "0.3"
-log4rs = "0.4"
 iron = "0.3"
 router = "0.1"
 rustc-serialize = "0.3"
 mount = "0.1"
 staticfile = "0.2"
+
+[dependencies.log4rs]
+version = "0.4"
+features = ["toml"]
 
 [dependencies.plugwise]
 git = "https://github.com/willem66745/plugwise-rust"
