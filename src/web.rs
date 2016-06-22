@@ -17,7 +17,7 @@ impl Web {
         Web
     }
 
-    pub fn serve(&mut self, tracker: TrackerClient) {
+    pub fn serve(&mut self, tracker: TrackerClient, webresources: &Path) {
         let mut router = Router::new();
 
         // JSON: get available switches
@@ -87,7 +87,7 @@ impl Web {
         let mut mount = Mount::new();
 
         mount
-            .mount("/", Static::new(Path::new("web/")))
+            .mount("/", Static::new(webresources))
             .mount("/api", router);
 
         Iron::new(mount).http("0.0.0.0:3000").unwrap();
