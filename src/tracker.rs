@@ -226,7 +226,7 @@ pub struct Tracker {
 
 impl Tracker {
     pub fn spawn(configfile: path::PathBuf) -> Tracker {
-        let zoneinfo = ZoneInfo::get_local_zoneinfo().ok().expect("BUG: not able to load local zoneinfo");
+        let zoneinfo = ZoneInfo::get_local_zoneinfo().expect("BUG: not able to load local zoneinfo");
         let (tx, rx) = channel();
 
         let joiner = thread::spawn(move || {
@@ -237,7 +237,7 @@ impl Tracker {
                                        Duration::days(1),
                                        Message::Tick);
 
-            tx.send(ticker.get_sender()).ok().expect("BUG: tracker thread unable to communicate with spawner");
+            tx.send(ticker.get_sender()).expect("BUG: tracker thread unable to communicate with spawner");
 
             for (event, timestamp) in ticker.recv_iter() {
                 match event {
@@ -250,12 +250,12 @@ impl Tracker {
                         break;
                     },
                     Message::List(ref sender) => {
-                        sender.send(tracker.get_list()).ok().expect("BUG: unable to send switch list");
+                        sender.send(tracker.get_list()).expect("BUG: unable to send switch list");
                     },
                     Message::Get(ref switch, ref sender) => {
                         let switch = tracker.get_switch(switch);
                         let result = switch.map(|switch|(switch.get_state(), switch.get_future_events()));
-                        sender.send(result).ok().expect("BUG: unable to send switch status");
+                        sender.send(result).expect("BUG: unable to send switch status");
                     },
                     Message::Switch(ref switch, ref state, ref sender) => {
                         let switch = tracker.get_switch(switch);
@@ -264,7 +264,7 @@ impl Tracker {
                             switch.get_state()
                         }).unwrap_or(Context::Off);
 
-                        sender.send(result).ok().expect("BUG: unable to send toggle result");
+                        sender.send(result).expect("BUG: unable to send toggle result");
                     },
                 }
             }
@@ -272,7 +272,7 @@ impl Tracker {
             tracker.serial.hangup();
         });
 
-        let sender = rx.recv().ok().expect("BUG: tracker thread unable to bootstrap");
+        let sender = rx.recv().expect("BUG: tracker thread unable to bootstrap");
 
         Tracker {
             tx: sender,
@@ -287,12 +287,12 @@ impl Tracker {
     }
 
     pub fn teardown(self) {
-        (&self).tx.send((Message::Teardown, None)).ok().expect("BUG: not able to shutdown tracker");
+        (&self).tx.send((Message::Teardown, None)).expect("BUG: not able to shutdown tracker");
         self.join();
     }
 
     pub fn join(self) {
-        self.join.join().ok().expect("BUG: not able to join tracker");
+        self.join.join().expect("BUG: not able to join tracker");
     }
 }
 
@@ -303,27 +303,25 @@ pub struct TrackerClient {
 
 impl TrackerClient {
     pub fn get_list(&self) -> Vec<String> {
-        let tracker = self.tx.lock().ok().expect("BUG: unable to get channel");
+        let tracker = self.tx.lock().expect("BUG: unable to get channel");
         let (tx, rx) = channel();
-        tracker.send((Message::List(tx), None)).ok().expect("BUG: unable to get list");
-        rx.recv().ok().expect("BUG: unable to receive list")
+        tracker.send((Message::List(tx), None)).expect("BUG: unable to get list");
+        rx.recv().expect("BUG: unable to receive list")
     }
 
     pub fn get_switch(&self, switch: &str) -> Option<(Context, BTreeMap<Timespec, Context>)> {
-        let tracker = self.tx.lock().ok().expect("BUG: unable to get channel");
+        let tracker = self.tx.lock().expect("BUG: unable to get channel");
         let (tx, rx) = channel();
         tracker.send((Message::Get(switch.into(), tx), None))
-            .ok()
             .expect("BUG: unable to get switch status");
-        rx.recv().ok().expect("BUG: unable to receive switch status")
+        rx.recv().expect("BUG: unable to receive switch status")
     }
 
     pub fn switch(&self, switch: &str, state: Context) -> Context {
-        let tracker = self.tx.lock().ok().expect("BUG: unable to get channel");
+        let tracker = self.tx.lock().expect("BUG: unable to get channel");
         let (tx, rx) = channel();
         tracker.send((Message::Switch(switch.into(), state, tx), None))
-            .ok()
             .expect("BUG: unable to toggle switch");
-        rx.recv().ok().expect("BUG: unable to get toggle result")
+        rx.recv().expect("BUG: unable to get toggle result")
     }
 }

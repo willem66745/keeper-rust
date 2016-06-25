@@ -77,7 +77,7 @@ dependencies = [
 [[package]]
 name = "daylight"
 version = "0.0.1"
-source = "git+https://github.com/willem66745/daylight-rust#461b43a7412d2f0a75248600418998d1efbf2593"
+source = "git+https://github.com/willem66745/daylight-rust#4c2141780fdd696b879d950f5fcd5a2bc3657454"
 dependencies = [
  "time 0.1.35 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -245,7 +245,7 @@ dependencies = [
 [[package]]
 name = "ntpclient"
 version = "0.0.1"
-source = "git+https://github.com/willem66745/ntpclient-rust#19680fd03a8ae3a37338fd58928b80229ba343fc"
+source = "git+https://github.com/willem66745/ntpclient-rust#7e3bdf60eb940825789a8da5181025320e3050b0"
 dependencies = [
  "byteorder 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.35 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -344,7 +344,7 @@ dependencies = [
 [[package]]
 name = "plugwise"
 version = "0.0.1"
-source = "git+https://github.com/willem66745/plugwise-rust#b8baf82fd3c2de086c12a72dcb0963cc5c7376ac"
+source = "git+https://github.com/willem66745/plugwise-rust#76386f2f0dbb62e06a9766de840bec2e4ecff29a"
 dependencies = [
  "crc16 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",

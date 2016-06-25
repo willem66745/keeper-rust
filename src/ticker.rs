@@ -109,20 +109,20 @@ impl<C> Ticker<C> where C: Send + Clone + 'static {
         let joiner = thread::spawn(move || {
             let mut ntp = NtpFetcher::new(server, ntp_poll, waiter.clone());
             let &(ref lock, ref cvar) = &*waiter;
-            let mut leaver = lock.lock().ok().expect("BUG: mutex cannot claimed inside thread");
+            let mut leaver = lock.lock().expect("BUG: mutex cannot claimed inside thread");
 
             // this loop sends the NTP synchronized timestamp to receiving end of the channel
             while *leaver {
                 let (new_leaver, _) =
                     cvar.wait_timeout(leaver,
-                                      time::Duration::from_millis(tick_interval.num_milliseconds() as u64)).ok().expect(
+                                      time::Duration::from_millis(tick_interval.num_milliseconds() as u64)).expect(
                                           "BUG: unexpected error during wait");
 
                 leaver = new_leaver;
 
                 if *leaver {
                     if let Some(ts) = ntp.get_timespec() {
-                        tx.send((event.clone(), Some(ts))).ok().expect("BUG: cannot send timestamp");
+                        tx.send((event.clone(), Some(ts))).expect("BUG: cannot send timestamp");
                     }
                 }
             }
@@ -138,7 +138,7 @@ impl<C> Ticker<C> where C: Send + Clone + 'static {
 
     pub fn stop_ticker(self) {
         let &(ref lock, ref cvar) = &*(self.leave_guard);
-        let mut leaver = lock.lock().ok().expect("BUG: cannot claim mutex during stop_ticker");
+        let mut leaver = lock.lock().expect("BUG: cannot claim mutex during stop_ticker");
         *leaver = false;
         drop(leaver);
         cvar.notify_all();

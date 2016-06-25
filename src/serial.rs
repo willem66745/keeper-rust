@@ -53,7 +53,6 @@ impl Serial {
 
         loop {
             let msg = rx.recv()
-                        .ok()
                         .expect("BUG: serial receive loop error");
 
             match msg {
@@ -65,19 +64,19 @@ impl Serial {
                             plugwise = Some(new_plugwise);
                             if let Some(tx) = tx {
                                 tx.send(ConnectResponse::Ok)
-                                    .ok().expect("unable to send response");
+                                    .expect("unable to send response");
                             }
                         },
                         Err(err) => {
                             if let Some(tx) = tx {
                                 tx.send(ConnectResponse::ConnectionFailed(err.description().into()))
-                                    .ok().expect("unable to send response");
+                                    .expect("unable to send response");
                             }
                         }
                     }
                 },
                 Command::ConnectStub => {
-                    let new_plugwise = plugwise::plugwise(plugwise::Device::Simulator).ok().expect(
+                    let new_plugwise = plugwise::plugwise(plugwise::Device::Simulator).expect(
                                     "creating a simulation instance unexpectedly failed!");
                     plugwise = Some(new_plugwise);
                 },
@@ -92,12 +91,12 @@ impl Serial {
                 },
                 Command::SwitchOn(circle) => {
                     if let Some(ref circle) = circles.get(&circle) {
-                        circle.switch_on().ok().expect("unable to switch on a circle");
+                        circle.switch_on().expect("unable to switch on a circle");
                     }
                 },
                 Command::SwitchOff(circle) => {
                     if let Some(ref circle) = circles.get(&circle) {
-                        circle.switch_off().ok().expect("unable to switch off a circle");
+                        circle.switch_off().expect("unable to switch off a circle");
                     }
                 },
             }
@@ -111,14 +110,12 @@ impl Serial {
             let (tx, rx) = channel();
 
             boot_tx.send(tx.clone())
-                   .ok()
                    .expect("BUG: bootstrap failed");
 
             Serial::message_loop(rx);
         });
 
         let response = boot_rx.recv()
-                              .ok()
                               .expect("BUG: bootstrap message expected");
 
         SerialClient {
@@ -135,7 +132,6 @@ pub struct SerialClient {
 impl SerialClient {
     pub fn connect_stub(&self) {
         self.tx.send(Command::ConnectStub)
-               .ok()
                .expect("BUG: serial thread channel error");
     }
 
@@ -143,10 +139,9 @@ impl SerialClient {
         let (tx, rx) = channel();
 
         self.tx.send(Command::ConnectDevice(Some(tx), device.into()))
-               .ok()
                .expect("BUG: serial thread channel error");
 
-        let response = rx.recv().ok().expect("BUG: cannot receive answer from serial thread");
+        let response = rx.recv().expect("BUG: cannot receive answer from serial thread");
 
         match response {
             ConnectResponse::Ok => Ok(()),
@@ -156,25 +151,21 @@ impl SerialClient {
 
     pub fn hangup(&self) {
         self.tx.send(Command::Hangup)
-               .ok()
                .expect("BUG: cannot bring serial thread down");
     }
 
     pub fn register_circle(&self, alias: &str, mac: u64) {
         self.tx.send(Command::RegisterCircle(alias.into(), mac))
-               .ok()
                .expect("BUG: cannot register circle");
     }
 
     pub fn switch_on(&self, alias: &str) {
         self.tx.send(Command::SwitchOn(alias.into()))
-               .ok()
                .expect("BUG: unable to request to switch circle on");
     }
 
     pub fn switch_off(&self, alias: &str) {
         self.tx.send(Command::SwitchOff(alias.into()))
-               .ok()
                .expect("BUG: unable to request to switch circle off");
     }
 }
