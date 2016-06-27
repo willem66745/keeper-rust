@@ -31,7 +31,7 @@ impl Web {
         // JSON: retrieve switch status
         let tracker4get = tracker.clone();
         router.post("/get/:switch", move|req: &mut Request| {
-            let ref switch = req.extensions.get::<Router>().unwrap().find("switch");
+            let switch = &req.extensions.get::<Router>().unwrap().find("switch");
             let content_type = "application/json".parse::<Mime>().unwrap();
 
             #[derive(RustcEncodable)]
@@ -40,7 +40,7 @@ impl Web {
                 next_events: BTreeMap<String, bool>
             }
 
-            Ok(switch.and_then(|ref switch| tracker4get.get_switch(&switch)).map_or(
+            Ok(switch.and_then(|ref switch| tracker4get.get_switch(switch)).map_or(
                 Response::with(status::NotFound), |(ref now, ref next)| {
                     let mut next_events = BTreeMap::new();
 
@@ -63,8 +63,8 @@ impl Web {
         let tracker4switch = tracker.clone();
         router.post("/switch/:switch/:state", move|req: &mut Request| {
             let params = req.extensions.get::<Router>().unwrap();
-            let ref switch = params.find("switch");
-            let ref state = params.find("state");
+            let switch = &params.find("switch");
+            let state = &params.find("state");
 
             Ok(switch.and_then(|ref switch| state.and_then(|ref state| {
                 match *state {
@@ -81,7 +81,7 @@ impl Web {
                     },
                     _ => None
                 }
-            })).unwrap_or(Response::with(status::NotFound)))
+            })).unwrap_or_else(||Response::with(status::NotFound)))
         });
 
         let mut mount = Mount::new();

@@ -76,9 +76,9 @@ impl Handler<Context> for Switch {
     /// add only valid events (where on event lies before the off event) to
     /// the valid events list.
     fn hint(&self, ts: &Timespec, context: &Context) {
-        match context {
-            &Context::On => self.last_on.set(*ts),
-            &Context::Off => {
+        match *context {
+            Context::On => self.last_on.set(*ts),
+            Context::Off => {
                 if *ts > self.last_on.get() {
                     debug!("scheduled: {} On  {}", at(self.last_on.get()).asctime(), self.alias);
                     debug!("scheduled: {} Off {}", at(*ts).asctime(), self.alias);
@@ -122,16 +122,16 @@ impl TrackerInner {
             None => self.serial.connect_stub(),
             Some(ref dev) => self.serial.connect_device(&dev[..]).unwrap() // XXX
         }
-        for circle in config.circles.iter() {
+        for circle in &config.circles {
             self.serial.register_circle(&circle.alias, circle.mac);
             let switch = Rc::new(Switch::new(circle.alias.clone(), self.serial.clone()));
             match circle.default {
                 config::CircleSetting::On => switch.set_switch_state(Context::On),
                 config::CircleSetting::Off => switch.set_switch_state(Context::Off),
                 config::CircleSetting::Schedule => {
-                    for toggle in circle.toggles.iter() {
-                        let start = toggle.start.into_dailyevent(&config.device);
-                        let end = toggle.end.into_dailyevent(&config.device);
+                    for toggle in &circle.toggles {
+                        let start = toggle.start.create_dailyevent(&config.device);
+                        let end = toggle.end.create_dailyevent(&config.device);
 
                         self.schedule.add_event(start, switch.clone(), Context::On);
                         self.schedule.add_event(end, switch.clone(), Context::Off);
@@ -189,7 +189,7 @@ impl TrackerInner {
             self.initial = false;
             // configure the switch to actually set the relay (otherwise the initial kicks will
             // quickly toggle switches unintendedly
-            for (_, ref mut switch) in self.switches.iter_mut() {
+            for (_, ref mut switch) in &mut self.switches {
                 switch.make_hot();
             }
         }
@@ -198,7 +198,7 @@ impl TrackerInner {
     fn get_list(&self) -> Vec<String> {
         let mut switches = vec![];
 
-        for (switch, _) in self.switches.iter() {
+        for switch in self.switches.keys() {
             switches.push(switch.clone());
         }
 
@@ -259,10 +259,10 @@ impl Tracker {
                     },
                     Message::Switch(ref switch, ref state, ref sender) => {
                         let switch = tracker.get_switch(switch);
-                        let result = switch.map(|switch| {
+                        let result = switch.map_or(Context::Off, |switch| {
                             switch.set_switch_state(*state);
                             switch.get_state()
-                        }).unwrap_or(Context::Off);
+                        });
 
                         sender.send(result).expect("BUG: unable to send toggle result");
                     },
@@ -296,9 +296,11 @@ impl Tracker {
     }
 }
 
+type TrackerSender = Arc<Mutex<Sender<(Message, Option<Timespec>)>>>;
+
 #[derive(Clone)]
 pub struct TrackerClient {
-    tx: Arc<Mutex<Sender<(Message, Option<Timespec>)>>>,
+    tx: TrackerSender,
 }
 
 impl TrackerClient {

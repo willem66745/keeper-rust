@@ -88,9 +88,7 @@ impl Event {
             match v.len() {
                 2 => {
                     let (h,m) = (v[0], v[1]);
-                    if h < 0 || h >= 48 {
-                        None
-                    } else if m < 0 || m >= 60 {
+                    if h < 0 || h >= 48 || m < 0 || m >= 60 {
                         None
                     } else {
                         Some((h as u8, m as u8))
@@ -102,11 +100,11 @@ impl Event {
     }
 
     fn new(key: &str, value: &toml::Value) -> Result<Event> {
-        let specifier = try!(key.split("_").last().ok_or(
+        let specifier = try!(key.split("_").last().ok_or_else(||
                 Error::MissingEventSpecifier(key.into())));
 
         match specifier {
-            "fixed" => Event::time_in_a_day(value).map(|(f,s)| Event::Fixed(f,s)).ok_or(
+            "fixed" => Event::time_in_a_day(value).map(|(f,s)| Event::Fixed(f,s)).ok_or_else(||
                 Error::WrongEventSpecifier("fixed must hold a array of two integers".into())),
             "fuzzy" => value.as_slice().map_or(None, |s| {
                     match s.len() {
@@ -117,23 +115,23 @@ impl Event {
                         },
                         _ => None
                     }
-                }).ok_or(Error::WrongEventSpecifier("fuzzy must hold a array of two arrays of two integers".into())),
-            "sunrise" => value.as_integer().map(|i| Event::Sunrise(i as u16)).ok_or(
+                }).ok_or_else(|| Error::WrongEventSpecifier("fuzzy must hold a array of two arrays of two integers".into())),
+            "sunrise" => value.as_integer().map(|i| Event::Sunrise(i as u16)).ok_or_else(||
                 Error::WrongEventSpecifier("sunrise must only hold one integer (variance in minutes)".into())),
-            "sunset" => value.as_integer().map(|i| Event::Sunset(i as u16)).ok_or(
+            "sunset" => value.as_integer().map(|i| Event::Sunset(i as u16)).ok_or_else(||
                 Error::WrongEventSpecifier("sunset must only hold one integer (variance in minutes)".into())),
             _ => Err(Error::WrongEventSpecifier("unsupported specifier".into()))
         }
     }
 
-    pub fn into_dailyevent(&self, device: &Device) -> DailyEvent {
+    pub fn create_dailyevent(&self, device: &Device) -> DailyEvent {
         let latitude = device.latitude;
         let longitude = device.longitude;
-        match self {
-            &Event::Fixed(h,m) => DailyEvent::Fixed(Filter::Always, Moment::new(h,m,0)),
-            &Event::Fuzzy((h1,m1),(h2,m2)) =>
+        match *self {
+            Event::Fixed(h,m) => DailyEvent::Fixed(Filter::Always, Moment::new(h,m,0)),
+            Event::Fuzzy((h1,m1),(h2,m2)) =>
                 DailyEvent::Fuzzy(Filter::Always, Moment::new(h1,m1,0), Moment::new(h2,m2,0)),
-            &Event::Sunrise(m) =>
+            Event::Sunrise(m) =>
                 DailyEvent::ByClosure(
                     Filter::Always,
                     Box::new(move|t| {
@@ -142,7 +140,7 @@ impl Event {
                                                       daylight.twilight_morning).num_seconds() / 2);
                         Moment::new_from_timespec(daylight.twilight_morning + dusk)
                     }), Duration::minutes(m as i64)),
-            &Event::Sunset(m) =>
+            Event::Sunset(m) =>
                 DailyEvent::ByClosure(
                     Filter::Always,
                     Box::new(move|t| {
