@@ -90,13 +90,19 @@ impl Serial {
                     }
                 },
                 Command::SwitchOn(circle) => {
-                    if let Some(ref circle) = circles.get(&circle) {
-                        circle.switch_on().expect("unable to switch on a circle");
+                    if let Some(ref circle_inst) = circles.get(&circle) {
+                        if let Err(err) = circle_inst.switch_on() {
+                            error!("unable to switch on a circle '{}' due to error {:?}",
+                                   circle, err);
+                        }
                     }
                 },
                 Command::SwitchOff(circle) => {
-                    if let Some(ref circle) = circles.get(&circle) {
-                        circle.switch_off().expect("unable to switch off a circle");
+                    if let Some(ref circle_inst) = circles.get(&circle) {
+                        if let Err(err) = circle_inst.switch_off() {
+                            error!("unable to switch off a circle '{}' due to error {:?}",
+                                   circle, err);
+                        }
                     }
                 },
             }
